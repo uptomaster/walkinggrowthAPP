@@ -3,6 +3,7 @@
   "buildCommand": "cd server && npm install",
   "outputDirectory": ".",
   "rewrites": [
-    { "source": "/api/(.*)", "destination": "/api" }
+    { "source": "/api/(.*)", "destination": "/api" },
+    { "source": "/", "destination": "/walk-growth.html" }
   ]
 }
