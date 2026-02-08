@@ -1,0 +1,18 @@
+{
+  "name": "walk-growth-server",
+  "version": "1.0.0",
+  "description": "산책 성장기 API - 인증 및 게임 데이터 저장",
+  "main": "index.js",
+  "scripts": {
+    "start": "node index.js",
+    "dev": "node -e \"require('dotenv').config(); require('./index.js')\""
+  },
+  "dependencies": {
+    "bcrypt": "^5.1.1",
+    "better-sqlite3": "^11.6.0",
+    "cors": "^2.8.5",
+    "dotenv": "^16.4.5",
+    "express": "^4.21.0",
+    "jsonwebtoken": "^9.0.2"
+  }
+}

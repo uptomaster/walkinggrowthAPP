@@ -1,0 +1,19 @@
+{
+  "name": "산책 성장기 - 걸음으로 성장하는 나만의 이야기",
+  "short_name": "산책 성장기",
+  "description": "걸음을 걸어 산책로를 열고, 아바타와 장비를 키우는 산책 어플입니다.",
+  "start_url": "./",
+  "display": "standalone",
+  "orientation": "portrait",
+  "background_color": "#0f0f12",
+  "theme_color": "#00d4aa",
+  "lang": "ko",
+  "icons": [
+    {
+      "src": "icon.svg",
+      "sizes": "any",
+      "type": "image/svg+xml",
+      "purpose": "any maskable"
+    }
+  ]
+}

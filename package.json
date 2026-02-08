@@ -1,0 +1,26 @@
+{
+  "name": "walk-growth-app",
+  "version": "1.0.0",
+  "description": "산책 성장기 - 걸음으로 성장하는 산책 어플",
+  "scripts": {
+    "start": "npx serve -p 8080",
+    "prepare-android": "node scripts/prepare-www.js",
+    "cap:sync": "npm run prepare-android && npx cap sync",
+    "cap:android": "npm run cap:sync && npx cap open android"
+  },
+  "capacitor": {
+    "appId": "com.pedometer.app",
+    "appName": "산책 성장기",
+    "webDir": "www"
+  },
+  "dependencies": {
+    "@capacitor/android": "^8.0.2",
+    "@capacitor/cli": "^8.0.2",
+    "@capacitor/core": "^8.0.2"
+  },
+  "main": "sw.js",
+  "keywords": [],
+  "author": "",
+  "license": "ISC",
+  "type": "commonjs"
+}

@@ -1,0 +1,8 @@
+{
+  "appId": "com.pedometer.app",
+  "appName": "산책 성장기",
+  "webDir": "www",
+  "server": {
+    "androidScheme": "https"
+  }
+}
