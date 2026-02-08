@@ -33,12 +33,13 @@ function registerRoutes(app) {
       if (pw.length < 6) {
         return res.status(400).json({ error: '비밀번호는 6자 이상이에요.' });
       }
-      if (findUserByNickname(nick)) {
+      const existing = await findUserByNickname(nick);
+      if (existing) {
         return res.status(409).json({ error: '이미 사용 중인 닉네임이에요.' });
       }
       const passwordHash = await bcrypt.hash(pw, SALT_ROUNDS);
-      const userId = createUser(nick, passwordHash);
-      const user = findUserById(userId);
+      const userId = await createUser(nick, passwordHash);
+      const user = await findUserById(userId);
       const token = jwt.sign(
         { userId: user.id, nickname: user.nickname },
         JWT_SECRET,
@@ -62,7 +63,7 @@ function registerRoutes(app) {
       if (!nick || !pw) {
         return res.status(400).json({ error: '닉네임과 비밀번호를 입력해 주세요.' });
       }
-      const user = findUserByNickname(nick);
+      const user = await findUserByNickname(nick);
       if (!user) {
         return res.status(401).json({ error: '닉네임 또는 비밀번호가 맞지 않아요.' });
       }

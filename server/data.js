@@ -2,9 +2,9 @@ const { getUserData, setUserData } = require('./db');
 const { authMiddleware } = require('./auth');
 
 function registerRoutes(app) {
-  app.get('/api/user/data', authMiddleware, (req, res) => {
+  app.get('/api/user/data', authMiddleware, async (req, res) => {
     try {
-      const row = getUserData(req.userId);
+      const row = await getUserData(req.userId);
       if (!row || row.data_json == null) {
         return res.json({ data: null });
       }
@@ -15,10 +15,10 @@ function registerRoutes(app) {
     }
   });
 
-  app.post('/api/user/data', authMiddleware, (req, res) => {
+  app.post('/api/user/data', authMiddleware, async (req, res) => {
     try {
       const dataJson = typeof req.body === 'string' ? req.body : JSON.stringify(req.body || {});
-      setUserData(req.userId, dataJson);
+      await setUserData(req.userId, dataJson);
       return res.json({ ok: true });
     } catch (err) {
       console.error('set user data error', err);

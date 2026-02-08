@@ -9,5 +9,4 @@ services:
         value: 20
       - key: JWT_SECRET
         generateValue: true
-      - key: DATABASE_PATH
-        value: ./walk_growth.db
+      # DATABASE_URL( Supabase 연결 URI )는 Render 대시보드에서 직접 설정하세요.
