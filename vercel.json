@@ -1,6 +1,7 @@
 {
   "version": 2,
   "buildCommand": "cd server && npm install",
+  "outputDirectory": ".",
   "rewrites": [
     { "source": "/api/(.*)", "destination": "/api" }
   ]
