@@ -37,12 +37,15 @@ module.exports = async (req, res) => {
     });
   } catch (err) {
     console.error('signup error', err);
+    console.error('DATABASE_URL exists:', !!process.env.DATABASE_URL);
+    console.error('Error code:', err.code);
+    console.error('Error message:', err.message);
     if (err.message === 'DATABASE_URL_NOT_SET') {
       return res.status(503).json({ error: '서버 DB 설정이 필요해요. (DATABASE_URL 환경 변수)' });
     }
-    if (err.code === 'ECONNREFUSED' || err.code === 'ENOTFOUND' || err.message && err.message.includes('connect')) {
+    if (err.code === 'ECONNREFUSED' || err.code === 'ENOTFOUND' || (err.message && err.message.includes('connect'))) {
       return res.status(503).json({ error: 'DB 연결에 실패했어요. Supabase 연결 정보(DATABASE_URL)를 확인해 주세요.' });
     }
-    return res.status(500).json({ error: '가입 처리 중 오류가 났어요.' });
+    return res.status(500).json({ error: '가입 처리 중 오류가 났어요: ' + (err.message || String(err)) });
   }
 };

@@ -55,12 +55,19 @@
 ## 2. Vercel 배포
 
 1. [Vercel](https://vercel.com) 로그인 후 **Add New → Project**에서 저장소 임포트.
-2. **Environment Variables**에서 추가:
-   - `JWT_SECRET`: 임의의 긴 비밀 문자열
+2. **Settings → Environment Variables**에서 다음 변수들을 **모든 환경(Production, Preview, Development)에** 추가:
+   - `JWT_SECRET`: 임의의 긴 비밀 문자열 (예: `openssl rand -base64 32`로 생성)
    - `DATABASE_URL`: Supabase에서 복사한 PostgreSQL 연결 URI
-3. **Deploy** 실행.
+     - 형식: `postgresql://postgres:[비밀번호]@db.[프로젝트-참조].supabase.co:5432/postgres`
+     - ⚠️ **중요**: 비밀번호에 특수문자(`@`, `#` 등)가 있으면 URL 인코딩 필요 (`@` → `%40`, `#` → `%23`)
+3. 환경 변수 추가 후 **Deployments 탭 → 최신 배포의 "Redeploy"** 클릭 (환경 변수 변경은 재배포해야 적용됨)
 4. 접속: `https://<프로젝트>.vercel.app/walk-growth.html`  
    - API는 같은 도메인의 `/api/auth/login`, `/api/user/data` 등으로 동작합니다.
+
+### 환경 변수 확인 방법
+
+배포 후 Vercel 대시보드 → **Deployments → 최신 배포 → Functions 탭**에서 로그를 확인하세요.  
+`DATABASE_URL exists: false`가 보이면 환경 변수가 설정되지 않은 것입니다.
 
 ### 참고 (Vercel)
 
