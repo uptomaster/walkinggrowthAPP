@@ -1558,15 +1558,18 @@
   function renderAuthGate() {
     var appMain = document.getElementById('appMain');
     var authOverlay = document.getElementById('authOverlay');
+    var btnCodex = document.getElementById('btnCodex');
     if (!appMain || !authOverlay) return;
     if (isLoggedIn) {
       appMain.classList.remove('hidden');
       authOverlay.style.display = 'none';
       authOverlay.classList.remove('auth-gate');
+      if (btnCodex) btnCodex.style.display = 'block';
     } else {
       appMain.classList.add('hidden');
       authOverlay.style.display = 'flex';
       authOverlay.classList.add('auth-gate');
+      if (btnCodex) btnCodex.style.display = 'none';
     }
   }
   function openAuthModal() {
@@ -3985,7 +3988,16 @@
       fetch(API_BASE + '/api/user/data?action=profile&userId=' + friendId, {
         headers: { 'Authorization': 'Bearer ' + token }
       })
-      .then(function(res) { return res.json(); })
+      .then(function(res) {
+        if (!res.ok) {
+          return res.json().then(function(errData) {
+            throw new Error(errData.error || '프로필 조회 실패');
+          }).catch(function() {
+            throw new Error('프로필 조회 중 오류가 발생했어요.');
+          });
+        }
+        return res.json();
+      })
       .then(function(data) {
         if (data.error) {
           showToast(data.error);
