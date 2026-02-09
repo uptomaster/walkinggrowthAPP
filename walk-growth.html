@@ -13,6 +13,14 @@
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;500;600;700&display=swap" rel="stylesheet">
+  <script src="config.js"></script>
+  <script src="https://developers.kakao.com/sdk/js/kakao.js"></script>
+  <script>
+    // 카카오 SDK 초기화
+    if (typeof window !== 'undefined' && window.APP_CONFIG && window.APP_CONFIG.kakao) {
+      Kakao.init(window.APP_CONFIG.kakao.javascriptKey);
+    }
+  </script>
   <style>
     /* 나이트 (기본) - 부드러운 다크 그린 톤 */
     :root, [data-theme="night"] {
@@ -113,6 +121,15 @@
     .auth-panel input { width: 100%; padding: 0.6rem; border-radius: var(--radius); border: 1px solid rgba(255,255,255,0.15); background: var(--bg-soft); color: var(--text); font-size: 0.9rem; box-sizing: border-box; }
     .btn-auth-submit { width: 100%; margin-top: 1rem; padding: 0.65rem; border: none; border-radius: var(--radius); background: linear-gradient(145deg, var(--accent), #10b981); color: var(--bg); font-weight: 600; font-family: inherit; cursor: pointer; font-size: 0.9rem; }
     .auth-hint { font-size: 0.7rem; color: var(--text-muted); margin-top: 0.75rem; }
+    .auth-link-btn { font-size: 0.8rem; }
+    .auth-divider { display: flex; align-items: center; margin: 1rem 0; text-align: center; }
+    .auth-divider::before, .auth-divider::after { content: ''; flex: 1; height: 1px; background: rgba(255,255,255,0.1); }
+    .auth-divider span { padding: 0 0.75rem; color: var(--text-muted); font-size: 0.75rem; }
+    .btn-social { width: 100%; padding: 0.65rem; border: none; border-radius: var(--radius); font-weight: 600; font-family: inherit; cursor: pointer; font-size: 0.9rem; margin-top: 0.5rem; display: flex; align-items: center; justify-content: center; gap: 0.5rem; }
+    .btn-kakao { background: #FEE500; color: #000; }
+    .btn-kakao:hover { background: #FDD835; }
+    .btn-google { background: #fff; color: #000; border: 1px solid rgba(255,255,255,0.2); }
+    .btn-google:hover { background: #f5f5f5; }
     .auth-close { position: absolute; top: 0.75rem; right: 0.75rem; width: 28px; height: 28px; border: none; border-radius: 50%; background: var(--bg-soft); color: var(--text-muted); cursor: pointer; font-size: 1rem; line-height: 1; }
     .auth-overlay.auth-gate { align-items: center; justify-content: center; }
     .auth-overlay.auth-gate .auth-close { display: none; }
@@ -770,16 +787,63 @@
           <input type="text" id="authLoginNick" placeholder="닉네임" maxlength="12" inputmode="text" autocomplete="username" />
           <label>비밀번호</label>
           <input type="password" id="authLoginPw" placeholder="비밀번호" autocomplete="current-password" />
+          <div style="display: flex; justify-content: space-between; margin-top: 0.5rem; font-size: 0.75rem;">
+            <button type="button" class="auth-link-btn" id="btnFindId" style="background: none; border: none; color: var(--accent); cursor: pointer; padding: 0;">아이디 찾기</button>
+            <button type="button" class="auth-link-btn" id="btnFindPw" style="background: none; border: none; color: var(--accent); cursor: pointer; padding: 0;">비밀번호 찾기</button>
+          </div>
           <button type="button" class="btn-auth-submit" id="btnAuthLogin">로그인</button>
+          <div class="auth-divider">
+            <span>또는</span>
+          </div>
+          <button type="button" class="btn-social btn-kakao" id="btnKakaoLogin">
+            <span>카카오로 시작하기</span>
+          </button>
+          <button type="button" class="btn-social btn-google" id="btnGoogleLogin">
+            <span>구글로 시작하기</span>
+          </button>
         </div>
         <div id="authSignupPanel" class="auth-panel" style="display:none;">
           <label>닉네임</label>
           <input type="text" id="authSignupNick" placeholder="2~12자" maxlength="12" inputmode="text" autocomplete="username" />
+          <label>이메일 (선택)</label>
+          <input type="email" id="authSignupEmail" placeholder="example@email.com" inputmode="email" autocomplete="email" />
           <label>비밀번호</label>
           <input type="password" id="authSignupPw" placeholder="6자 이상" autocomplete="new-password" />
           <label>비밀번호 확인</label>
           <input type="password" id="authSignupPw2" placeholder="다시 입력" autocomplete="new-password" />
           <button type="button" class="btn-auth-submit" id="btnAuthSignup">가입하기</button>
+          <div class="auth-divider">
+            <span>또는</span>
+          </div>
+          <button type="button" class="btn-social btn-kakao" id="btnKakaoSignup">
+            <span>카카오로 시작하기</span>
+          </button>
+          <button type="button" class="btn-social btn-google" id="btnGoogleSignup">
+            <span>구글로 시작하기</span>
+          </button>
+        </div>
+        <div id="authFindIdPanel" class="auth-panel" style="display:none;">
+          <label>이메일</label>
+          <input type="email" id="authFindIdEmail" placeholder="가입 시 입력한 이메일" inputmode="email" autocomplete="email" />
+          <button type="button" class="btn-auth-submit" id="btnFindIdSubmit">아이디 찾기</button>
+          <div id="findIdResult" style="margin-top: 1rem; padding: 0.75rem; background: var(--bg-soft); border-radius: var(--radius); display: none;"></div>
+          <button type="button" class="auth-link-btn" id="btnBackToLogin" style="width: 100%; margin-top: 0.5rem; background: none; border: none; color: var(--accent); cursor: pointer; padding: 0.5rem;">← 로그인으로 돌아가기</button>
+        </div>
+        <div id="authFindPwPanel" class="auth-panel" style="display:none;">
+          <label>이메일</label>
+          <input type="email" id="authFindPwEmail" placeholder="가입 시 입력한 이메일" inputmode="email" autocomplete="email" />
+          <button type="button" class="btn-auth-submit" id="btnFindPwSubmit">비밀번호 재설정 링크 발송</button>
+          <div id="findPwResult" style="margin-top: 1rem; padding: 0.75rem; background: var(--bg-soft); border-radius: var(--radius); display: none;"></div>
+          <div id="authResetPwPanel" style="display:none; margin-top: 1rem;">
+            <label>재설정 토큰</label>
+            <input type="text" id="authResetToken" placeholder="이메일로 받은 토큰 입력" />
+            <label>새 비밀번호</label>
+            <input type="password" id="authResetPw" placeholder="6자 이상" autocomplete="new-password" />
+            <label>새 비밀번호 확인</label>
+            <input type="password" id="authResetPw2" placeholder="다시 입력" autocomplete="new-password" />
+            <button type="button" class="btn-auth-submit" id="btnResetPwSubmit">비밀번호 재설정</button>
+          </div>
+          <button type="button" class="auth-link-btn" id="btnBackToLogin2" style="width: 100%; margin-top: 0.5rem; background: none; border: none; color: var(--accent); cursor: pointer; padding: 0.5rem;">← 로그인으로 돌아가기</button>
         </div>
         <p class="auth-hint">※ 비밀번호는 서버에서 암호화되어 저장되며, 게임 데이터는 DB에 동기화됩니다.</p>
         <button type="button" class="auth-close" id="authClose" aria-label="닫기">✕</button>
@@ -2019,16 +2083,18 @@
   }
   function doSignup() {
     var nick = (document.getElementById('authSignupNick') || {}).value.trim();
+    var email = (document.getElementById('authSignupEmail') || {}).value.trim();
     var pw = (document.getElementById('authSignupPw') || {}).value;
     var pw2 = (document.getElementById('authSignupPw2') || {}).value;
     if (!nick || nick.length < 2) { showToast('닉네임은 2자 이상이에요.'); return; }
     if (!pw || pw.length < 6) { showToast('비밀번호는 6자 이상이에요.'); return; }
     if (pw !== pw2) { showToast('비밀번호가 일치하지 않아요.'); return; }
+    if (email && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) { showToast('올바른 이메일 형식이 아니에요.'); return; }
     var url = API_BASE + '/api/auth/signup';
     fetch(url, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ nickname: nick, password: pw })
+      body: JSON.stringify({ nickname: nick, password: pw, email: email || null })
     }).then(function (r) {
       if (!r.ok) {
         return r.text().then(function (text) {
@@ -2055,6 +2121,244 @@
         console.error('Signup error:', err, 'URL:', url);
         showToast('서버에 연결할 수 없어요. (API: ' + url + ')');
       });
+  }
+  function doFindId() {
+    var email = (document.getElementById('authFindIdEmail') || {}).value.trim();
+    if (!email || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
+      showToast('올바른 이메일을 입력해 주세요.'); return;
+    }
+    var url = API_BASE + '/api/auth/find-id';
+    fetch(url, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ email: email })
+    }).then(function (r) {
+      if (!r.ok) {
+        return r.text().then(function (text) {
+          try { return { ok: false, body: JSON.parse(text) }; }
+          catch { return { ok: false, body: { error: 'HTTP ' + r.status + ': ' + text.substring(0, 50) } }; }
+        });
+      }
+      return r.json().then(function (j) { return { ok: true, body: j }; });
+    }).then(function (x) {
+      var resultDiv = document.getElementById('findIdResult');
+      if (!x.ok) {
+        if (resultDiv) {
+          resultDiv.style.display = 'block';
+          resultDiv.innerHTML = '<div style="color: #ef4444;">' + (x.body.error || '아이디 찾기에 실패했어요.') + '</div>';
+        } else {
+          showToast(x.body.error || '아이디 찾기에 실패했어요.');
+        }
+        return;
+      }
+      if (resultDiv) {
+        resultDiv.style.display = 'block';
+        resultDiv.innerHTML = '<div style="color: var(--accent);">닉네임: <strong>' + x.body.fullNickname + '</strong></div>';
+      }
+    }).catch(function (err) {
+      console.error('Find ID error:', err);
+      showToast('서버에 연결할 수 없어요.');
+    });
+  }
+  function doFindPw() {
+    var email = (document.getElementById('authFindPwEmail') || {}).value.trim();
+    if (!email || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
+      showToast('올바른 이메일을 입력해 주세요.'); return;
+    }
+    var url = API_BASE + '/api/auth/reset-password-request';
+    fetch(url, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ email: email })
+    }).then(function (r) {
+      if (!r.ok) {
+        return r.text().then(function (text) {
+          try { return { ok: false, body: JSON.parse(text) }; }
+          catch { return { ok: false, body: { error: 'HTTP ' + r.status + ': ' + text.substring(0, 50) } }; }
+        });
+      }
+      return r.json().then(function (j) { return { ok: true, body: j }; });
+    }).then(function (x) {
+      var resultDiv = document.getElementById('findPwResult');
+      var resetPanel = document.getElementById('authResetPwPanel');
+      if (!x.ok) {
+        if (resultDiv) {
+          resultDiv.style.display = 'block';
+          resultDiv.innerHTML = '<div style="color: #ef4444;">' + (x.body.error || '비밀번호 재설정 요청에 실패했어요.') + '</div>';
+        } else {
+          showToast(x.body.error || '비밀번호 재설정 요청에 실패했어요.');
+        }
+        return;
+      }
+      if (resultDiv) {
+        resultDiv.style.display = 'block';
+        var msg = x.body.message || '비밀번호 재설정 링크를 발송했어요.';
+        if (x.body.resetToken) {
+          msg += '<br><small style="color: var(--text-muted); margin-top: 0.5rem; display: block;">개발 모드: 토큰 = ' + x.body.resetToken + '</small>';
+        }
+        resultDiv.innerHTML = '<div style="color: var(--accent);">' + msg + '</div>';
+      }
+      if (resetPanel && x.body.resetToken) {
+        resetPanel.style.display = 'block';
+        document.getElementById('authResetToken').value = x.body.resetToken;
+      }
+    }).catch(function (err) {
+      console.error('Find PW error:', err);
+      showToast('서버에 연결할 수 없어요.');
+    });
+  }
+  function doResetPw() {
+    var token = (document.getElementById('authResetToken') || {}).value.trim();
+    var pw = (document.getElementById('authResetPw') || {}).value;
+    var pw2 = (document.getElementById('authResetPw2') || {}).value;
+    if (!token) { showToast('토큰을 입력해 주세요.'); return; }
+    if (!pw || pw.length < 6) { showToast('비밀번호는 6자 이상이에요.'); return; }
+    if (pw !== pw2) { showToast('비밀번호가 일치하지 않아요.'); return; }
+    var url = API_BASE + '/api/auth/reset-password';
+    fetch(url, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ token: token, newPassword: pw })
+    }).then(function (r) {
+      if (!r.ok) {
+        return r.text().then(function (text) {
+          try { return { ok: false, body: JSON.parse(text) }; }
+          catch { return { ok: false, body: { error: 'HTTP ' + r.status + ': ' + text.substring(0, 50) } }; }
+        });
+      }
+      return r.json().then(function (j) { return { ok: true, body: j }; });
+    }).then(function (x) {
+      if (!x.ok) {
+        showToast(x.body.error || '비밀번호 재설정에 실패했어요.');
+        return;
+      }
+      showToast('비밀번호가 재설정되었어요. 로그인해 주세요.');
+      switchAuthTab('login');
+    }).catch(function (err) {
+      console.error('Reset PW error:', err);
+      showToast('서버에 연결할 수 없어요.');
+    });
+  }
+  function doSocialLogin(provider) {
+    // 카카오/구글 OAuth는 프론트엔드에서 처리하고, 백엔드에 사용자 정보 전송
+    if (provider === 'kakao') {
+      // 카카오 로그인 (Kakao SDK 필요)
+      if (typeof Kakao === 'undefined') {
+        showToast('카카오 SDK가 로드되지 않았어요. 카카오 개발자 앱 설정이 필요해요.');
+        return;
+      }
+      Kakao.Auth.login({
+        success: function(authObj) {
+          Kakao.API.request({
+            url: '/v2/user/me',
+            success: function(res) {
+              var socialId = res.id.toString();
+              var nickname = res.kakao_account.profile.nickname || '카카오사용자';
+              var email = res.kakao_account.email || null;
+              sendSocialLogin(provider, socialId, nickname, email);
+            },
+            fail: function(err) {
+              console.error('Kakao API error:', err);
+              showToast('카카오 로그인에 실패했어요.');
+            }
+          });
+        },
+        fail: function(err) {
+          console.error('Kakao Auth error:', err);
+          showToast('카카오 로그인에 실패했어요.');
+        }
+      });
+    } else if (provider === 'google') {
+      // 구글 로그인 (Google Sign-In API 필요)
+      if (typeof gapi === 'undefined') {
+        showToast('구글 SDK가 로드되지 않았어요. Google OAuth 설정이 필요해요.');
+        return;
+      }
+      var googleClientId = (typeof window !== 'undefined' && window.APP_CONFIG && window.APP_CONFIG.google) 
+        ? window.APP_CONFIG.google.clientId 
+        : 'YOUR_GOOGLE_CLIENT_ID';
+      if (googleClientId === 'YOUR_GOOGLE_CLIENT_ID') {
+        showToast('구글 클라이언트 ID가 설정되지 않았어요.');
+        return;
+      }
+      gapi.load('auth2', function() {
+        gapi.auth2.init({
+          client_id: googleClientId
+        }).then(function() {
+          var authInstance = gapi.auth2.getAuthInstance();
+          authInstance.signIn().then(function(googleUser) {
+            var profile = googleUser.getBasicProfile();
+            var socialId = profile.getId();
+            var nickname = profile.getName() || '구글사용자';
+            var email = profile.getEmail() || null;
+            sendSocialLogin(provider, socialId, nickname, email);
+          }).catch(function(err) {
+            console.error('Google Sign-In error:', err);
+            showToast('구글 로그인에 실패했어요.');
+          });
+        });
+      });
+    }
+  }
+  function sendSocialLogin(provider, socialId, nickname, email) {
+    var url = API_BASE + '/api/auth/social';
+    fetch(url, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ provider: provider, socialId: socialId, nickname: nickname, email: email })
+    }).then(function (r) {
+      if (!r.ok) {
+        return r.text().then(function (text) {
+          try { return { ok: false, body: JSON.parse(text) }; }
+          catch { return { ok: false, body: { error: 'HTTP ' + r.status + ': ' + text.substring(0, 50) } }; }
+        });
+      }
+      return r.json().then(function (j) { return { ok: true, body: j }; });
+    }).then(function (x) {
+      if (!x.ok) {
+        showToast(x.body.error || '소셜 로그인에 실패했어요.');
+        return;
+      }
+      setAuthToken(x.body.token);
+      userProfile = x.body.user;
+      isLoggedIn = true;
+      return fetch(API_BASE + '/api/user/data', { headers: { 'Authorization': 'Bearer ' + x.body.token } });
+    }).then(function (r) {
+      if (!r) return;
+      return r.json();
+    }).then(function (body) {
+      if (body && body.data) {
+        try {
+          var data = typeof body.data === 'string' ? JSON.parse(body.data) : body.data;
+          applyGameState(data);
+        } catch (e) {}
+      }
+      saveAll();
+      closeAuthModal();
+      renderHeaderAuth();
+      renderAttendance();
+      var card = document.getElementById('attendanceCard');
+      if (card) card.style.display = 'block';
+      showToast(userProfile.nickname + '님 환영해요!');
+    }).catch(function (err) {
+      console.error('Social login error:', err);
+      showToast('서버에 연결할 수 없어요.');
+    });
+  }
+  function switchAuthTab(tab) {
+    document.getElementById('authLoginPanel').style.display = tab === 'login' ? 'block' : 'none';
+    document.getElementById('authSignupPanel').style.display = tab === 'signup' ? 'block' : 'none';
+    document.getElementById('authFindIdPanel').style.display = tab === 'findId' ? 'block' : 'none';
+    document.getElementById('authFindPwPanel').style.display = tab === 'findPw' ? 'block' : 'none';
+    document.querySelectorAll('.auth-tab').forEach(function(t){ 
+      t.classList.remove('active'); 
+      if (t.getAttribute('data-auth-tab') === tab) t.classList.add('active'); 
+    });
+    document.getElementById('authTitle').textContent = 
+      tab === 'login' ? '로그인' : 
+      tab === 'signup' ? '회원가입' : 
+      tab === 'findId' ? '아이디 찾기' : 
+      tab === 'findPw' ? '비밀번호 찾기' : '로그인';
   }
   function doLogout() {
     clearAuthToken();
@@ -2467,10 +2771,7 @@
     document.querySelectorAll('.auth-tab').forEach(function(t) {
       t.addEventListener('click', function() {
         var tab = this.getAttribute('data-auth-tab');
-        document.querySelectorAll('.auth-tab').forEach(function(x){ x.classList.toggle('active', x.getAttribute('data-auth-tab') === tab); });
-        document.getElementById('authLoginPanel').style.display = tab === 'login' ? 'block' : 'none';
-        document.getElementById('authSignupPanel').style.display = tab === 'signup' ? 'block' : 'none';
-        document.getElementById('authTitle').textContent = tab === 'login' ? '로그인' : '회원가입';
+        switchAuthTab(tab);
       });
     });
     var authClose = document.getElementById('authClose');
@@ -2481,6 +2782,28 @@
     if (btnAuthLogin) btnAuthLogin.addEventListener('click', doLogin);
     var btnAuthSignup = document.getElementById('btnAuthSignup');
     if (btnAuthSignup) btnAuthSignup.addEventListener('click', doSignup);
+    var btnFindId = document.getElementById('btnFindId');
+    if (btnFindId) btnFindId.addEventListener('click', function() { switchAuthTab('findId'); });
+    var btnFindPw = document.getElementById('btnFindPw');
+    if (btnFindPw) btnFindPw.addEventListener('click', function() { switchAuthTab('findPw'); });
+    var btnFindIdSubmit = document.getElementById('btnFindIdSubmit');
+    if (btnFindIdSubmit) btnFindIdSubmit.addEventListener('click', doFindId);
+    var btnFindPwSubmit = document.getElementById('btnFindPwSubmit');
+    if (btnFindPwSubmit) btnFindPwSubmit.addEventListener('click', doFindPw);
+    var btnResetPwSubmit = document.getElementById('btnResetPwSubmit');
+    if (btnResetPwSubmit) btnResetPwSubmit.addEventListener('click', doResetPw);
+    var btnBackToLogin = document.getElementById('btnBackToLogin');
+    if (btnBackToLogin) btnBackToLogin.addEventListener('click', function() { switchAuthTab('login'); });
+    var btnBackToLogin2 = document.getElementById('btnBackToLogin2');
+    if (btnBackToLogin2) btnBackToLogin2.addEventListener('click', function() { switchAuthTab('login'); });
+    var btnKakaoLogin = document.getElementById('btnKakaoLogin');
+    if (btnKakaoLogin) btnKakaoLogin.addEventListener('click', function() { doSocialLogin('kakao'); });
+    var btnKakaoSignup = document.getElementById('btnKakaoSignup');
+    if (btnKakaoSignup) btnKakaoSignup.addEventListener('click', function() { doSocialLogin('kakao'); });
+    var btnGoogleLogin = document.getElementById('btnGoogleLogin');
+    if (btnGoogleLogin) btnGoogleLogin.addEventListener('click', function() { doSocialLogin('google'); });
+    var btnGoogleSignup = document.getElementById('btnGoogleSignup');
+    if (btnGoogleSignup) btnGoogleSignup.addEventListener('click', function() { doSocialLogin('google'); });
     var btnAttendance = document.getElementById('btnAttendance');
     if (btnAttendance) btnAttendance.addEventListener('click', doAttendance);
   }
