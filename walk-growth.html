@@ -18,6 +18,13 @@
   <script src="config.js"></script>
   <script src="https://developers.kakao.com/sdk/js/kakao.js"></script>
   <script>
+    // Capacitor 감지 (모바일 앱 환경 확인)
+    window.isCapacitorApp = typeof window !== 'undefined' && (
+      window.Capacitor || 
+      window.capacitor || 
+      (window.location && (window.location.protocol === 'capacitor:' || window.location.hostname === 'localhost'))
+    );
+    
     // 카카오 SDK 초기화
     if (typeof window !== 'undefined' && window.APP_CONFIG && window.APP_CONFIG.kakao) {
       Kakao.init(window.APP_CONFIG.kakao.javascriptKey);
@@ -971,12 +978,26 @@
   if (typeof location !== 'undefined') {
     if (location.protocol === 'file:') {
       API_BASE = 'http://localhost:3000';
+    } else if (location.hostname === 'localhost' || location.hostname === '127.0.0.1') {
+      // 로컬 개발 환경
+      API_BASE = 'http://localhost:3000';
     } else {
-      // 배포 환경에서는 현재 도메인 사용 (Vercel 등)
-      API_BASE = location.origin;
+      // 배포 환경: Vercel URL 사용
+      // Capacitor 앱에서는 location.origin이 제대로 작동하지 않을 수 있으므로 명시적으로 설정
+      var isCapacitorApp = typeof window !== 'undefined' && window.isCapacitorApp;
+      if (isCapacitorApp || location.protocol === 'capacitor:' || (location.hostname === 'localhost' && typeof window !== 'undefined' && window.Capacitor)) {
+        // Capacitor 모바일 앱에서는 Vercel 배포 URL 사용
+        API_BASE = 'https://walkinggrowth-app.vercel.app';
+      } else {
+        // 웹 브라우저에서는 현재 도메인 사용
+        API_BASE = location.origin;
+      }
     }
+  } else {
+    // location이 없는 경우 (드문 경우) - 모바일 앱일 가능성이 높음
+    API_BASE = 'https://walkinggrowth-app.vercel.app';
   }
-  console.log('API_BASE:', API_BASE, 'Location:', typeof location !== 'undefined' ? location.href : 'N/A');
+  console.log('API_BASE:', API_BASE, 'Location:', typeof location !== 'undefined' ? location.href : 'N/A', 'isCapacitorApp:', typeof window !== 'undefined' && window.isCapacitorApp, 'Capacitor:', typeof window !== 'undefined' && window.Capacitor ? 'Yes' : 'No');
   const TOKEN_KEY = 'walk_token';
   function getAuthToken() { try { return localStorage.getItem(TOKEN_KEY); } catch (e) { return null; } }
   function setAuthToken(t) { try { if (t) localStorage.setItem(TOKEN_KEY, t); else localStorage.removeItem(TOKEN_KEY); } catch (e) {} }
