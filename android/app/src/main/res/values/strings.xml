@@ -1,7 +1,7 @@
 <?xml version='1.0' encoding='utf-8'?>
 <resources>
-    <string name="app_name">산책 성장기</string>
-    <string name="title_activity_main">산책 성장기</string>
-    <string name="package_name">com.pedometer.app</string>
-    <string name="custom_url_scheme">com.pedometer.app</string>
+    <string name="app_name">WalkStory</string>
+    <string name="title_activity_main">WalkStory</string>
+    <string name="package_name">com.walkstory.app</string>
+    <string name="custom_url_scheme">com.walkstory.app</string>
 </resources>
