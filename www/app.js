@@ -1581,32 +1581,42 @@
   function renderAuthGate() {
     var appMain = document.getElementById('appMain');
     var authOverlay = document.getElementById('authOverlay');
+    var mobileNicknameOverlay = document.getElementById('mobileNicknameOverlay');
     var btnCodex = document.getElementById('btnCodex');
     if (!appMain || !authOverlay) return;
 
     // 모바일 앱에서는 로그인 여부 확인 후 처리
     if (isMobileApp) {
       if (isLoggedIn) {
+        // 로그인 성공: 모든 인증 관련 화면 숨기기
         appMain.classList.remove('hidden');
         authOverlay.style.display = 'none';
         authOverlay.classList.remove('auth-gate');
+        if (mobileNicknameOverlay) mobileNicknameOverlay.style.display = 'none';
         if (btnCodex) btnCodex.style.display = 'block';
       } else {
-        // 모바일 앱에서 로그인 안 된 경우 닉네임 입력 모달 표시
+        // 로그인 안 됨: 닉네임 입력 모달 표시, 도감 숨기기
+        appMain.classList.add('hidden');
+        authOverlay.style.display = 'none';
+        if (btnCodex) btnCodex.style.display = 'none';
         showMobileNicknameModal();
       }
       return;
     }
 
     if (isLoggedIn) {
+      // 로그인 성공: 모든 인증 관련 화면 숨기기
       appMain.classList.remove('hidden');
       authOverlay.style.display = 'none';
       authOverlay.classList.remove('auth-gate');
+      if (mobileNicknameOverlay) mobileNicknameOverlay.style.display = 'none';
       if (btnCodex) btnCodex.style.display = 'block';
     } else {
+      // 로그인 안 됨: 인증 화면 표시, 도감 숨기기
       appMain.classList.add('hidden');
       authOverlay.style.display = 'flex';
       authOverlay.classList.add('auth-gate');
+      if (mobileNicknameOverlay) mobileNicknameOverlay.style.display = 'none';
       if (btnCodex) btnCodex.style.display = 'none';
     }
   }
@@ -1766,14 +1776,24 @@
         }
       }
       saveAll();
+      
+      // 모든 인증 관련 모달 닫기
       hideMobileNicknameModal();
+      closeAuthModal();
+      
+      // 인증 게이트 업데이트 (모든 인증 화면 숨기고 메인 화면 표시)
+      renderAuthGate();
+      
       setTimeout(function() {
         renderHeaderAuth();
-        renderAuthGate();
         renderPet();
         renderAttendance();
+        var card = document.getElementById('attendanceCard');
+        if (card) card.style.display = 'block';
         if (userProfile && userProfile.nickname) {
           showWelcomeModal(userProfile.nickname);
+        } else {
+          showWelcomeModal();
         }
       }, 300);
     })
@@ -2039,20 +2059,23 @@
           var errorMsg = x && x.body && x.body.error ? x.body.error : '로그인에 실패했어요.';
           console.error('Login failed:', x);
           showToast(errorMsg);
-          return; 
+          return Promise.reject(new Error(errorMsg)); // 명시적으로 reject하여 catch로 전달
         }
         setAuthToken(x.body.token);
         userProfile = x.body.user;
         isLoggedIn = true;
         return fetch(API_BASE + '/api/user/data', { 
-          headers: { 'Authorization': 'Bearer ' + x.body.token },
+          headers: { 
+            'Authorization': 'Bearer ' + x.body.token,
+            'Accept': 'application/json'
+          },
           mode: 'cors',
           credentials: 'omit',
           cache: 'no-cache'
         });
       })
       .then(function (r) {
-        if (!r) return;
+        if (!r) return null;
         if (!r.ok) {
           console.warn('User data fetch failed:', r.status);
           return null;
@@ -2060,6 +2083,7 @@
         return r.json();
       })
       .then(function (body) {
+        // 로그인 성공 처리
         if (body && body.data) {
           try {
             var data = typeof body.data === 'string' ? JSON.parse(body.data) : body.data;
@@ -2070,10 +2094,16 @@
           }
         }
         saveAll();
+        
+        // 모든 인증 관련 모달 닫기
+        hideMobileNicknameModal();
         closeAuthModal();
+        
+        // 인증 게이트 업데이트 (모든 인증 화면 숨기고 메인 화면 표시)
+        renderAuthGate();
+        
         setTimeout(function() {
           renderHeaderAuth();
-          renderAuthGate();
           renderPet();
           renderAttendance();
           var card = document.getElementById('attendanceCard');
@@ -2098,6 +2128,13 @@
           online: navigator.onLine,
           userAgent: navigator.userAgent
         });
+        
+        // 이미 로그인된 상태라면 에러 메시지를 표시하지 않음
+        if (isLoggedIn) {
+          console.log('Login succeeded but error occurred during data fetch, ignoring error');
+          return;
+        }
+        
         var errorMsg = '서버에 연결할 수 없어요.';
         if (err.message && err.message.includes('Failed to fetch')) {
           // 모바일 앱에서 네트워크 오류인 경우 더 자세한 정보 제공
@@ -2108,7 +2145,7 @@
           }
         } else if (err.message && err.message.includes('요청 시간 초과')) {
           errorMsg = '서버 응답 시간이 초과되었어요. 다시 시도해 주세요.';
-        } else if (err.message) {
+        } else if (err.message && !err.message.includes('로그인에 실패')) {
           errorMsg = '오류: ' + err.message;
         }
         showToast(errorMsg);
@@ -2162,10 +2199,16 @@
         userProfile = x.body.user;
         isLoggedIn = true;
         saveAll();
+        
+        // 모든 인증 관련 모달 닫기
+        hideMobileNicknameModal();
         closeAuthModal();
+        
+        // 인증 게이트 업데이트 (모든 인증 화면 숨기고 메인 화면 표시)
+        renderAuthGate();
+        
         setTimeout(function() {
           renderHeaderAuth();
-          renderAuthGate();
           renderPet();
           renderAttendance();
           var card = document.getElementById('attendanceCard');
@@ -2643,10 +2686,11 @@
         // 로그인은 성공했지만 데이터 로드는 스킵
         if (userProfile && userProfile.nickname) {
           saveAll();
+          hideMobileNicknameModal();
           closeAuthModal();
+          renderAuthGate();
           setTimeout(function() {
             renderHeaderAuth();
-            renderAuthGate();
             renderPet();
             renderAttendance();
             var card = document.getElementById('attendanceCard');
@@ -2661,10 +2705,11 @@
         console.warn('Failed to load user data:', r.status);
         if (userProfile && userProfile.nickname) {
           saveAll();
+          hideMobileNicknameModal();
           closeAuthModal();
+          renderAuthGate();
           setTimeout(function() {
             renderHeaderAuth();
-            renderAuthGate();
             renderPet();
             renderAttendance();
             var card = document.getElementById('attendanceCard');
@@ -2686,10 +2731,16 @@
         }
       }
       saveAll();
+      
+      // 모든 인증 관련 모달 닫기
+      hideMobileNicknameModal();
       closeAuthModal();
+      
+      // 인증 게이트 업데이트 (모든 인증 화면 숨기고 메인 화면 표시)
+      renderAuthGate();
+      
       setTimeout(function() {
         renderHeaderAuth();
-        renderAuthGate();
         renderPet();
         renderAttendance();
         var card = document.getElementById('attendanceCard');
@@ -2705,10 +2756,11 @@
       console.error('User data load error:', err);
       if (userProfile && userProfile.nickname) {
         saveAll();
+        hideMobileNicknameModal();
         closeAuthModal();
+        renderAuthGate();
         setTimeout(function() {
           renderHeaderAuth();
-          renderAuthGate();
           renderPet();
           renderAttendance();
           var card = document.getElementById('attendanceCard');
@@ -2724,10 +2776,11 @@
       // 로그인은 성공했지만 데이터 로드 실패
       if (userProfile && userProfile.nickname) {
         saveAll();
+        hideMobileNicknameModal();
         closeAuthModal();
+        renderAuthGate();
         setTimeout(function() {
           renderHeaderAuth();
-          renderAuthGate();
           renderPet();
           renderAttendance();
           var card = document.getElementById('attendanceCard');

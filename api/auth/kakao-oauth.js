@@ -72,8 +72,36 @@ const callback = async (req, res) => {
     
     if (!tokenResponse.ok) {
       const errorText = await tokenResponse.text();
-      console.error('Kakao token exchange error:', errorText);
-      return res.redirect(`walkstory://oauth?error=token_exchange_failed`);
+      let parsedError = null;
+      try {
+        parsedError = JSON.parse(errorText);
+      } catch (e) {
+        // JSON 파싱 실패 시 텍스트 그대로 사용
+      }
+      
+      console.error('Kakao token exchange error:', {
+        status: tokenResponse.status,
+        statusText: tokenResponse.statusText,
+        errorText: errorText,
+        parsedError: parsedError,
+        redirectUri: redirectUri,
+        hasClientSecret: !!KAKAO_CLIENT_SECRET,
+        clientSecretLength: KAKAO_CLIENT_SECRET ? KAKAO_CLIENT_SECRET.length : 0,
+        clientId: KAKAO_REST_API_KEY ? KAKAO_REST_API_KEY.substring(0, 10) + '...' : 'missing'
+      });
+      
+      // 더 자세한 에러 메시지 생성
+      let errorMessage = 'token_exchange_failed';
+      if (parsedError && parsedError.error) {
+        errorMessage = parsedError.error;
+        if (parsedError.error_description) {
+          errorMessage += ': ' + parsedError.error_description;
+        }
+      } else if (errorText) {
+        errorMessage += ': ' + errorText.substring(0, 100);
+      }
+      
+      return res.redirect(`walkstory://oauth?error=${encodeURIComponent(errorMessage)}`);
     }
     
     const tokenData = await tokenResponse.json();
