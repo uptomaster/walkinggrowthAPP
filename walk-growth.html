@@ -4,10 +4,11 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
   <meta name="theme-color" content="#00d4aa">
+  <meta name="mobile-web-app-capable" content="yes">
   <meta name="apple-mobile-web-app-capable" content="yes">
   <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
-  <meta name="apple-mobile-web-app-title" content="산책 성장기">
-  <title>산책 성장기 · 산책 = 훈련, 게임처럼 성장하는 캐주얼 워킹</title>
+  <meta name="apple-mobile-web-app-title" content="WalkStory">
+  <title>WalkStory · 걸음으로 키우는 나만의 동물 친구</title>
   <link rel="manifest" href="manifest.json">
   <link rel="apple-touch-icon" href="icon.svg">
   <link rel="preconnect" href="https://fonts.googleapis.com">
@@ -135,6 +136,25 @@
     .auth-close { position: absolute; top: 0.75rem; right: 0.75rem; width: 28px; height: 28px; border: none; border-radius: 50%; background: var(--bg-soft); color: var(--text-muted); cursor: pointer; font-size: 1rem; line-height: 1; }
     .auth-overlay.auth-gate { align-items: center; justify-content: center; }
     .auth-overlay.auth-gate .auth-close { display: none; }
+    .pet-section { background: var(--card); border-radius: var(--radius-lg); padding: 1rem; margin-bottom: 1rem; border: 1px solid rgba(255,255,255,0.08); }
+    .pet-display { text-align: center; }
+    .pet-preview { display: flex; flex-direction: column; align-items: center; gap: 1rem; margin-bottom: 1rem; }
+    .pet-emoji { font-size: 4rem; line-height: 1; }
+    .pet-info { width: 100%; }
+    .pet-name { font-size: 1.1rem; font-weight: 600; color: var(--text); margin-bottom: 0.5rem; }
+    .pet-level { font-size: 0.9rem; color: var(--accent); font-weight: 600; margin-bottom: 0.5rem; }
+    .pet-exp-bar { width: 100%; height: 8px; background: var(--bg-soft); border-radius: 999px; overflow: hidden; margin-bottom: 0.5rem; }
+    .pet-exp-fill { height: 100%; background: linear-gradient(90deg, var(--accent), #10b981); border-radius: 999px; transition: width 0.3s ease; }
+    .pet-exp-text { font-size: 0.75rem; color: var(--text-muted); }
+    .btn-select-pet { width: 100%; padding: 0.65rem; border: none; border-radius: var(--radius); background: linear-gradient(145deg, var(--accent), #10b981); color: var(--bg); font-weight: 600; font-family: inherit; cursor: pointer; font-size: 0.9rem; }
+    .pet-select-modal { background: var(--card); border-radius: var(--radius-lg); padding: 1.5rem; max-width: 400px; width: 100%; border: 1px solid rgba(255,255,255,0.08); box-shadow: var(--shadow); }
+    .pet-grid { display: grid; grid-template-columns: repeat(2, 1fr); gap: 0.75rem; margin-top: 1rem; }
+    .pet-item { background: var(--bg-soft); border: 2px solid rgba(255,255,255,0.1); border-radius: var(--radius); padding: 1rem; cursor: pointer; transition: all 0.2s; text-align: center; }
+    .pet-item:hover { border-color: var(--accent); background: var(--accent-dim); }
+    .pet-item.selected { border-color: var(--accent); background: var(--accent-dim); }
+    .pet-item-emoji { font-size: 2.5rem; margin-bottom: 0.5rem; }
+    .pet-item-name { font-size: 0.9rem; font-weight: 600; color: var(--text); margin-bottom: 0.25rem; }
+    .pet-item-desc { font-size: 0.7rem; color: var(--text-muted); }
     #appMain { display: block; }
     #appMain.hidden { display: none !important; }
     .attendance-card { background: linear-gradient(145deg, var(--card), rgba(251,191,36,0.06)); border: 1px solid rgba(251,191,36,0.2); border-radius: var(--radius-lg); padding: 1rem; margin-bottom: 1rem; box-shadow: var(--shadow); }
@@ -532,8 +552,8 @@
     <div id="appMain" class="hidden">
     <header>
       <button type="button" class="theme-toggle" id="themeToggle" title="모닝/나이트 전환">🌙</button>
-      <h1>산책 성장기</h1>
-      <p class="subtitle">걸음으로 성장하는 나만의 이야기</p>
+      <h1>WalkStory</h1>
+      <p class="subtitle">걸음으로 키우는 나만의 동물 친구</p>
       <div class="header-level" id="headerLevel">
         <span>Lv.<span class="lv-num" id="levelNum">1</span></span>
         <div class="level-bar-wrap"><div class="level-bar-fill" id="levelBarFill" style="width:0%"></div></div>
@@ -648,6 +668,23 @@
             <div class="ah-leg-r" id="previewLegR" style="background:var(--bottom-color,#4b5563)"></div>
             <div class="ah-slot-head" id="previewHat"></div>
             <div class="ah-slot-accessory" id="previewWeapon"></div>
+          </div>
+        </div>
+        <div class="pet-section" id="petSection">
+          <p class="customize-section-title">나만의 동물 친구</p>
+          <div class="pet-display" id="petDisplay">
+            <div class="pet-preview" id="petPreview">
+              <div class="pet-emoji" id="petEmoji" style="font-size: 4rem;">🐾</div>
+              <div class="pet-info" id="petInfo">
+                <div class="pet-name" id="petName">동물을 선택해주세요</div>
+                <div class="pet-level" id="petLevel">Lv.1</div>
+                <div class="pet-exp-bar">
+                  <div class="pet-exp-fill" id="petExpFill" style="width: 0%"></div>
+                </div>
+                <div class="pet-exp-text" id="petExpText">경험치: 0 / 100</div>
+              </div>
+            </div>
+            <button type="button" class="btn-select-pet" id="btnSelectPet">동물 선택하기</button>
           </div>
         </div>
         <p class="customize-section-title">기본 정보</p>
@@ -852,6 +889,17 @@
         <button type="button" class="auth-close" id="authClose" aria-label="닫기">✕</button>
       </div>
     </div>
+    
+    <!-- 동물 선택 모달 -->
+    <div class="auth-overlay" id="petSelectOverlay" style="display:none;" role="dialog" aria-modal="true">
+      <div class="pet-select-modal">
+        <h2 class="auth-title">동물 친구 선택하기</h2>
+        <p style="font-size: 0.85rem; color: var(--text-muted); margin-bottom: 1rem;">걸음을 걸어 함께 성장할 동물 친구를 선택해주세요!</p>
+        <div class="pet-grid" id="petGrid"></div>
+        <button type="button" class="btn-auth-submit" id="btnConfirmPet" style="margin-top: 1rem;">선택하기</button>
+        <button type="button" class="auth-close" id="petSelectClose" aria-label="닫기">✕</button>
+      </div>
+    </div>
   </div>
 
   <div class="toast" id="toast" role="alert"></div>
@@ -865,6 +913,7 @@
   function setAuthToken(t) { try { if (t) localStorage.setItem(TOKEN_KEY, t); else localStorage.removeItem(TOKEN_KEY); } catch (e) {} }
   function clearAuthToken() { setAuthToken(null); }
   const STORAGE_KEYS = {
+    pet: 'walk_pet',
     steps: 'pedometer_steps',
     date: 'pedometer_date',
     lifetime: 'walk_lifetime_steps',
@@ -1126,6 +1175,20 @@
   }
 
   let steps = 0, lastDate = '', lifetimeSteps = 0;
+  // 동물 데이터
+  const PET_TYPES = [
+    { id: 'dog', name: '강아지', emoji: '🐕', description: '충실하고 활발한 친구', color: '#fbbf24' },
+    { id: 'cat', name: '고양이', emoji: '🐱', description: '우아하고 독립적인 친구', color: '#f97316' },
+    { id: 'lion', name: '사자', emoji: '🦁', description: '용맹하고 당당한 친구', color: '#eab308' },
+    { id: 'rabbit', name: '토끼', emoji: '🐰', description: '귀엽고 민첩한 친구', color: '#fda4af' },
+    { id: 'bear', name: '곰', emoji: '🐻', description: '힘차고 든든한 친구', color: '#92400e' },
+    { id: 'panda', name: '판다', emoji: '🐼', description: '평화롭고 사랑스러운 친구', color: '#ffffff' },
+    { id: 'fox', name: '여우', emoji: '🦊', description: '영리하고 교활한 친구', color: '#f97316' },
+    { id: 'tiger', name: '호랑이', emoji: '🐯', description: '강인하고 용맹한 친구', color: '#fbbf24' }
+  ];
+  
+  let pet = { type: null, level: 1, exp: 0, name: '' }; // 선택한 동물 정보
+  
   let avatar = { name: '산책러', skin: '#f5d0b0', hair: 'short', hairColor: '#4a3728' };
   let inventory = [];
   var storage = [];
@@ -1279,6 +1342,10 @@
       if (ad) lastAttendanceDate = ad;
       if (as != null) attendanceStreak = parseInt(as, 10) || 0;
     } catch (e) {}
+    try {
+      var p = localStorage.getItem(STORAGE_KEYS.pet);
+      if (p) pet = { ...pet, ...JSON.parse(p) };
+    } catch (e) {}
     var th = localStorage.getItem(STORAGE_KEYS.theme);
     if (th === 'morning' || th === 'night') document.body.setAttribute('data-theme', th);
     lastDate = todayStr();
@@ -1308,6 +1375,7 @@
       if (sharedToday) localStorage.setItem(STORAGE_KEYS.sharedDate, todayStr());
       localStorage.setItem(STORAGE_KEYS.attendanceDate, lastAttendanceDate);
       localStorage.setItem(STORAGE_KEYS.attendanceStreak, String(attendanceStreak));
+      localStorage.setItem(STORAGE_KEYS.pet, JSON.stringify(pet));
     } catch (e) {}
     if (isLoggedIn && getAuthToken()) syncGameStateToServer();
   }
@@ -1317,6 +1385,7 @@
       date: todayStr(),
       lifetimeSteps: lifetimeSteps,
       avatar: avatar,
+      pet: pet,
       inventory: inventory,
       equipped: equipped,
       storage: storage,
@@ -1343,6 +1412,7 @@
     if (obj.date != null) lastDate = obj.date;
     if (obj.lifetimeSteps != null) lifetimeSteps = obj.lifetimeSteps;
     if (obj.avatar && typeof obj.avatar === 'object') avatar = { ...avatar, ...obj.avatar };
+    if (obj.pet && typeof obj.pet === 'object') pet = { ...pet, ...obj.pet };
     if (Array.isArray(obj.inventory)) inventory = obj.inventory;
     if (obj.equipped && typeof obj.equipped === 'object') { Object.keys(obj.equipped).forEach(function (k) { if (obj.equipped[k] != null) equipped[k] = obj.equipped[k]; }); }
     if (Array.isArray(obj.storage)) storage = obj.storage;
@@ -1360,6 +1430,10 @@
     if (obj.sharedDate != null) sharedToday = obj.sharedDate === todayStr();
     if (obj.lastAttendanceDate != null) lastAttendanceDate = obj.lastAttendanceDate;
     if (obj.attendanceStreak != null) attendanceStreak = obj.attendanceStreak;
+    if (obj.pet && typeof obj.pet === 'object') {
+      pet = { ...pet, ...obj.pet };
+      renderPet();
+    }
   }
   function syncGameStateToServer() {
     var token = getAuthToken();
@@ -1394,6 +1468,7 @@
           try {
             var data = typeof body.data === 'string' ? JSON.parse(body.data) : body.data;
             applyGameState(data);
+            renderPet();
           } catch (e) {}
         }
       })
@@ -1403,6 +1478,10 @@
   function addStep() {
     steps++;
     lifetimeSteps++;
+    // 동물 경험치 획득 (10걸음당 1 경험치)
+    if (steps % 10 === 0 && pet.type) {
+      addPetExp(1);
+    }
     saveAll();
     renderSteps();
     checkRouteRewards();
@@ -1835,7 +1914,7 @@
       initWalkMap();
       setTimeout(function () { initWalkMap(); updateWalkMap(); }, 150);
     }
-    if (tabId === 'avatar') renderAvatar();
+    if (tabId === 'avatar') { renderAvatar(); renderPet(); }
     if (tabId === 'storage') renderStorage();
     if (tabId === 'shop') { renderGold(); }
     if (tabId === 'equipment') { renderEquipped(); renderInventory(); renderEnhanceSelect(); }
@@ -1974,9 +2053,9 @@
   }
   function doShare() {
     var url = location.href;
-    var text = '산책 성장기 - 걸음으로 성장하는 나만의 이야기';
+    var text = 'WalkStory - 걸음으로 키우는 나만의 동물 친구';
     if (navigator.share) {
-      navigator.share({ title: '산책 성장기', text: text, url: url }).then(function() {
+      navigator.share({ title: 'WalkStory', text: text, url: url }).then(function() {
         onShareSuccess();
       }).catch(function() { onShareSuccess(); });
     } else {
@@ -2081,6 +2160,8 @@
         saveAll();
         closeAuthModal();
         renderHeaderAuth();
+        renderAuthGate();
+        renderPet();
         renderAttendance();
         var card = document.getElementById('attendanceCard');
         if (card) card.style.display = 'block';
@@ -2258,24 +2339,49 @@
         return;
       }
       Kakao.Auth.login({
+        scope: 'profile_nickname,account_email', // 닉네임과 이메일 동의 요청
         success: function(authObj) {
           Kakao.API.request({
             url: '/v2/user/me',
             success: function(res) {
-              var socialId = res.id.toString();
-              var nickname = res.kakao_account.profile.nickname || '카카오사용자';
-              var email = res.kakao_account.email || null;
+              console.log('Kakao API response:', res);
+              var socialId = res.id ? res.id.toString() : null;
+              if (!socialId) {
+                showToast('카카오 사용자 정보를 가져올 수 없어요.');
+                return;
+              }
+              
+              // 닉네임 추출 (안전하게)
+              var nickname = '카카오사용자';
+              if (res.kakao_account) {
+                if (res.kakao_account.profile && res.kakao_account.profile.nickname) {
+                  nickname = res.kakao_account.profile.nickname;
+                } else if (res.kakao_account.profile_nickname) {
+                  nickname = res.kakao_account.profile_nickname;
+                } else if (res.properties && res.properties.nickname) {
+                  nickname = res.properties.nickname;
+                }
+              } else if (res.properties && res.properties.nickname) {
+                nickname = res.properties.nickname;
+              }
+              
+              // 이메일 추출 (안전하게)
+              var email = null;
+              if (res.kakao_account && res.kakao_account.email) {
+                email = res.kakao_account.email;
+              }
+              
               sendSocialLogin(provider, socialId, nickname, email);
             },
             fail: function(err) {
               console.error('Kakao API error:', err);
-              showToast('카카오 로그인에 실패했어요.');
+              showToast('카카오 사용자 정보를 가져올 수 없어요: ' + (err.error_description || err.error || '알 수 없는 오류'));
             }
           });
         },
         fail: function(err) {
           console.error('Kakao Auth error:', err);
-          showToast('카카오 로그인에 실패했어요.');
+          showToast('카카오 로그인에 실패했어요: ' + (err.error_description || err.error || '알 수 없는 오류'));
         }
       });
     } else if (provider === 'google') {
@@ -2334,25 +2440,34 @@
       isLoggedIn = true;
       return fetch(API_BASE + '/api/user/data', { headers: { 'Authorization': 'Bearer ' + x.body.token } });
     }).then(function (r) {
-      if (!r) return;
+      if (!r) return null;
+      if (!r.ok) {
+        return r.json().then(function(errorBody) {
+          throw new Error(errorBody.error || '데이터를 불러오는 중 오류가 났어요.');
+        });
+      }
       return r.json();
     }).then(function (body) {
       if (body && body.data) {
         try {
           var data = typeof body.data === 'string' ? JSON.parse(body.data) : body.data;
           applyGameState(data);
-        } catch (e) {}
+        } catch (e) {
+          console.error('Failed to apply game state:', e);
+        }
       }
       saveAll();
       closeAuthModal();
       renderHeaderAuth();
+      renderAuthGate();
+      renderPet();
       renderAttendance();
       var card = document.getElementById('attendanceCard');
       if (card) card.style.display = 'block';
       showToast(userProfile.nickname + '님 환영해요!');
     }).catch(function (err) {
       console.error('Social login error:', err);
-      showToast('서버에 연결할 수 없어요.');
+      showToast('로그인은 성공했지만 데이터를 불러오는 중 오류가 났어요: ' + (err.message || '알 수 없는 오류'));
     });
   }
   function switchAuthTab(tab) {
@@ -2463,6 +2578,49 @@
     showToast('공유 감사해요! +40 G');
   }
 
+  function renderPet() {
+    var petEmoji = document.getElementById('petEmoji');
+    var petName = document.getElementById('petName');
+    var petLevel = document.getElementById('petLevel');
+    var petExpFill = document.getElementById('petExpFill');
+    var petExpText = document.getElementById('petExpText');
+    
+    if (!pet.type) {
+      if (petEmoji) petEmoji.textContent = '🐾';
+      if (petName) petName.textContent = '동물을 선택해주세요';
+      if (petLevel) petLevel.textContent = '';
+      if (petExpFill) petExpFill.style.width = '0%';
+      if (petExpText) petExpText.textContent = '';
+      return;
+    }
+    
+    var petType = PET_TYPES.find(function(p) { return p.id === pet.type; });
+    if (!petType) return;
+    
+    var expForNextLevel = pet.level * 100; // 레벨당 100 경험치 필요
+    var expPercent = (pet.exp / expForNextLevel) * 100;
+    
+    if (petEmoji) petEmoji.textContent = petType.emoji;
+    if (petName) petName.textContent = pet.name || petType.name;
+    if (petLevel) petLevel.textContent = 'Lv.' + pet.level;
+    if (petExpFill) petExpFill.style.width = Math.min(expPercent, 100) + '%';
+    if (petExpText) petExpText.textContent = '경험치: ' + pet.exp + ' / ' + expForNextLevel;
+  }
+  
+  function addPetExp(amount) {
+    if (!pet.type) return;
+    pet.exp += amount;
+    var expForNextLevel = pet.level * 100;
+    while (pet.exp >= expForNextLevel) {
+      pet.exp -= expForNextLevel;
+      pet.level++;
+      showToast('🎉 ' + (PET_TYPES.find(function(p) { return p.id === pet.type; }) || {}).name + '이(가) 레벨업했어요! Lv.' + pet.level);
+      expForNextLevel = pet.level * 100;
+    }
+    saveAll();
+    renderPet();
+  }
+  
   function renderAvatar() {
     var nameEl = document.getElementById('avatarName');
     var inputEl = document.getElementById('inputAvatarName');
@@ -2702,6 +2860,59 @@
     if (st) st.textContent = s.text;
     if (sm) sm.textContent = s.milestone;
   }
+  
+  function openPetSelectModal() {
+    var overlay = document.getElementById('petSelectOverlay');
+    var grid = document.getElementById('petGrid');
+    if (!overlay || !grid) return;
+    
+    grid.innerHTML = '';
+    var selectedPetId = pet.type;
+    
+    PET_TYPES.forEach(function(petType) {
+      var item = document.createElement('div');
+      item.className = 'pet-item' + (selectedPetId === petType.id ? ' selected' : '');
+      item.setAttribute('data-pet-id', petType.id);
+      item.innerHTML = '<div class="pet-item-emoji">' + petType.emoji + '</div><div class="pet-item-name">' + petType.name + '</div><div class="pet-item-desc">' + petType.description + '</div>';
+      item.onclick = function() {
+        document.querySelectorAll('.pet-item').forEach(function(el) { el.classList.remove('selected'); });
+        item.classList.add('selected');
+        selectedPetId = petType.id;
+      };
+      grid.appendChild(item);
+    });
+    
+    overlay.style.display = 'flex';
+  }
+  
+  function closePetSelectModal() {
+    var overlay = document.getElementById('petSelectOverlay');
+    if (overlay) overlay.style.display = 'none';
+  }
+  
+  function confirmPetSelection() {
+    var selectedItem = document.querySelector('.pet-item.selected');
+    if (!selectedItem) {
+      showToast('동물을 선택해주세요.');
+      return;
+    }
+    
+    var petTypeId = selectedItem.getAttribute('data-pet-id');
+    if (!petTypeId) return;
+    
+    var petType = PET_TYPES.find(function(p) { return p.id === petTypeId; });
+    if (!petType) return;
+    
+    pet.type = petTypeId;
+    pet.name = petType.name;
+    if (!pet.level) pet.level = 1;
+    if (pet.exp == null) pet.exp = 0;
+    
+    saveAll();
+    renderPet();
+    closePetSelectModal();
+    showToast(petType.name + '을(를) 선택했어요! 함께 걸어 성장해봐요! 🐾');
+  }
 
   function attachListeners() {
     document.querySelectorAll('.tab-btn').forEach(function (btn) {
@@ -2831,6 +3042,16 @@
     if (btnGoogleLogin) btnGoogleLogin.addEventListener('click', function() { doSocialLogin('google'); });
     var btnGoogleSignup = document.getElementById('btnGoogleSignup');
     if (btnGoogleSignup) btnGoogleSignup.addEventListener('click', function() { doSocialLogin('google'); });
+    var btnSelectPet = document.getElementById('btnSelectPet');
+    if (btnSelectPet) btnSelectPet.addEventListener('click', openPetSelectModal);
+    var btnConfirmPet = document.getElementById('btnConfirmPet');
+    if (btnConfirmPet) btnConfirmPet.addEventListener('click', confirmPetSelection);
+    var petSelectClose = document.getElementById('petSelectClose');
+    if (petSelectClose) petSelectClose.addEventListener('click', closePetSelectModal);
+    var petSelectOverlay = document.getElementById('petSelectOverlay');
+    if (petSelectOverlay) petSelectOverlay.addEventListener('click', function(e) {
+      if (e.target === petSelectOverlay) closePetSelectModal();
+    });
     var btnAttendance = document.getElementById('btnAttendance');
     if (btnAttendance) btnAttendance.addEventListener('click', doAttendance);
   }
@@ -2881,6 +3102,7 @@
       renderSteps();
       renderWalk();
       renderAvatar();
+      renderPet();
       renderRoutes();
       renderStorage();
       renderQuests();

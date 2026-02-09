@@ -30,7 +30,15 @@ module.exports = async (req, res) => {
         return res.json({ data: row.data_json });
       } catch (err) {
         console.error('get user data error', err);
-        return res.status(500).json({ error: '데이터를 불러오는 중 오류가 났어요.' });
+        console.error('Error details:', {
+          message: err.message,
+          stack: err.stack,
+          userId: req.userId
+        });
+        return res.status(500).json({ 
+          error: '데이터를 불러오는 중 오류가 났어요.',
+          details: process.env.NODE_ENV === 'development' ? err.message : undefined
+        });
       }
     });
   }
@@ -42,7 +50,16 @@ module.exports = async (req, res) => {
         return res.json({ ok: true });
       } catch (err) {
         console.error('set user data error', err);
-        return res.status(500).json({ error: '데이터를 저장하는 중 오류가 났어요.' });
+        console.error('Error details:', {
+          message: err.message,
+          stack: err.stack,
+          userId: req.userId,
+          dataJsonLength: dataJson ? dataJson.length : 0
+        });
+        return res.status(500).json({ 
+          error: '데이터를 저장하는 중 오류가 났어요.',
+          details: process.env.NODE_ENV === 'development' ? err.message : undefined
+        });
       }
     });
   }
