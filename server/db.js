@@ -17,27 +17,51 @@ async function initTables() {
         password_hash TEXT NOT NULL,
         created_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
       );
+    `);
+    await client.query(`
       CREATE TABLE IF NOT EXISTS user_data (
         user_id INTEGER NOT NULL PRIMARY KEY REFERENCES users(id) ON DELETE CASCADE,
         data_json TEXT,
         updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
       );
+    `);
+    await client.query(`
       CREATE INDEX IF NOT EXISTS idx_users_nickname ON users(nickname);
     `);
+  } catch (err) {
+    console.error('initTables error:', err);
+    throw err;
   } finally {
     client.release();
   }
 }
 
 let initDone = false;
+let initInProgress = false;
 async function ensureInit() {
   if (!connectionString) {
     const err = new Error('DATABASE_URL_NOT_SET');
     throw err;
   }
-  if (!initDone) {
+  if (initDone) {
+    return;
+  }
+  if (initInProgress) {
+    // 다른 요청이 초기화 중이면 대기
+    while (initInProgress) {
+      await new Promise(resolve => setTimeout(resolve, 100));
+    }
+    return;
+  }
+  initInProgress = true;
+  try {
     await initTables();
     initDone = true;
+  } catch (err) {
+    console.error('ensureInit error:', err);
+    throw err;
+  } finally {
+    initInProgress = false;
   }
 }
 
