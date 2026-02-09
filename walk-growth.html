@@ -115,8 +115,24 @@
     .header-auth-btn.logged-in { border-color: var(--accent); color: var(--accent); }
     .header-logout-btn { font-size: 0.7rem; padding: 0.3rem 0.5rem; border-radius: 0.5rem; border: 1px solid rgba(255,255,255,0.2); background: var(--card); color: var(--text-muted); cursor: pointer; font-family: inherit; font-weight: 500; }
     .header-logout-btn:hover { color: #ef4444; border-color: #ef4444; }
-    .auth-overlay { position: fixed; inset: 0; background: rgba(0,0,0,0.6); z-index: 200; display: flex; align-items: center; justify-content: center; padding: 1rem; }
-    .auth-modal { background: var(--card); border-radius: var(--radius-lg); padding: 1.5rem; max-width: 320px; width: 100%; border: 1px solid rgba(255,255,255,0.08); box-shadow: var(--shadow); position: relative; }
+    .auth-overlay { position: fixed; inset: 0; background: rgba(0,0,0,0.6); z-index: 200; display: flex; align-items: center; justify-content: center; padding: 1rem; transition: opacity 0.3s ease, visibility 0.3s ease; }
+    .auth-overlay.fade-out { opacity: 0; visibility: hidden; }
+    .auth-modal { background: var(--card); border-radius: var(--radius-lg); padding: 1.5rem; max-width: 320px; width: 100%; border: 1px solid rgba(255,255,255,0.08); box-shadow: var(--shadow); position: relative; transition: transform 0.3s ease, opacity 0.3s ease; }
+    .auth-overlay.fade-out .auth-modal { transform: scale(0.95); opacity: 0; }
+    .auth-loading { display: none; text-align: center; padding: 2rem; }
+    .auth-loading.active { display: block; }
+    .auth-loading-spinner { width: 40px; height: 40px; border: 3px solid var(--accent-dim); border-top-color: var(--accent); border-radius: 50%; margin: 0 auto 1rem; animation: spin 0.8s linear infinite; }
+    @keyframes spin { to { transform: rotate(360deg); } }
+    .welcome-modal { display: none; position: fixed; inset: 0; background: rgba(0,0,0,0.7); z-index: 300; align-items: center; justify-content: center; padding: 1rem; animation: fadeIn 0.3s ease; }
+    .welcome-modal.show { display: flex; }
+    .welcome-content { background: var(--card); border-radius: var(--radius-lg); padding: 2rem; max-width: 320px; width: 100%; text-align: center; border: 1px solid rgba(255,255,255,0.08); box-shadow: var(--shadow); animation: slideUp 0.4s ease; }
+    @keyframes slideUp { from { transform: translateY(20px); opacity: 0; } to { transform: translateY(0); opacity: 1; } }
+    .welcome-icon { font-size: 4rem; margin-bottom: 1rem; animation: bounce 0.6s ease; }
+    @keyframes bounce { 0%, 100% { transform: translateY(0); } 50% { transform: translateY(-10px); } }
+    .welcome-title { font-size: 1.25rem; font-weight: 600; color: var(--accent); margin-bottom: 0.5rem; }
+    .welcome-message { color: var(--text-muted); margin-bottom: 1.5rem; }
+    .btn-welcome-close { background: var(--accent); color: var(--bg); border: none; border-radius: var(--radius); padding: 0.75rem 2rem; font-size: 0.9rem; font-weight: 600; cursor: pointer; transition: transform 0.2s ease, box-shadow 0.2s ease; }
+    .btn-welcome-close:active { transform: scale(0.95); }
     .auth-tabs { display: flex; gap: 0.25rem; margin-bottom: 1rem; }
     .auth-tab { flex: 1; padding: 0.5rem; border: none; border-radius: var(--radius); background: var(--bg-soft); color: var(--text-muted); font-size: 0.85rem; font-family: inherit; cursor: pointer; }
     .auth-tab.active { background: var(--accent-dim); color: var(--accent); font-weight: 600; }
@@ -816,6 +832,22 @@
     </div>
 
     <!-- 로그인/회원가입 (비로그인 시 첫 화면, 로그인 후 메인만 표시) -->
+    <!-- 환영 모달 -->
+    <div class="welcome-modal" id="welcomeModal">
+      <div class="welcome-content">
+        <div class="welcome-icon">🎉</div>
+        <div class="welcome-title" id="welcomeTitle">환영합니다!</div>
+        <div class="welcome-message" id="welcomeMessage">로그인 성공</div>
+        <button type="button" class="btn-welcome-close" id="btnWelcomeClose">시작하기</button>
+      </div>
+    </div>
+
+    <!-- 로딩 오버레이 -->
+    <div class="auth-loading" id="authLoading">
+      <div class="auth-loading-spinner"></div>
+      <div style="color: var(--text-muted); font-size: 0.9rem;">로그인 중...</div>
+    </div>
+
     <div class="auth-overlay auth-gate" id="authOverlay" role="dialog" aria-modal="true" aria-labelledby="authTitle">
       <div class="auth-modal">
         <div class="auth-tabs">
@@ -2119,8 +2151,48 @@
   }
   function closeAuthModal() {
     var overlay = document.getElementById('authOverlay');
-    if (overlay && isLoggedIn) overlay.style.display = 'none';
-    if (overlay && !isLoggedIn) { overlay.style.display = 'flex'; overlay.classList.add('auth-gate'); }
+    if (overlay && isLoggedIn) {
+      // 페이드아웃 애니메이션
+      overlay.classList.add('fade-out');
+      setTimeout(function() {
+        overlay.style.display = 'none';
+        overlay.classList.remove('fade-out');
+      }, 300);
+    }
+    if (overlay && !isLoggedIn) { 
+      overlay.style.display = 'flex'; 
+      overlay.classList.add('auth-gate'); 
+    }
+  }
+  
+  function showWelcomeModal(nickname) {
+    var modal = document.getElementById('welcomeModal');
+    var title = document.getElementById('welcomeTitle');
+    var message = document.getElementById('welcomeMessage');
+    if (modal && title && message) {
+      title.textContent = nickname ? nickname + '님 환영합니다!' : '환영합니다!';
+      message.textContent = 'WalkStory와 함께 걸어요!';
+      modal.classList.add('show');
+    }
+  }
+  
+  function hideWelcomeModal() {
+    var modal = document.getElementById('welcomeModal');
+    if (modal) {
+      modal.classList.remove('show');
+    }
+  }
+  
+  function showAuthLoading() {
+    var loading = document.getElementById('authLoading');
+    var overlay = document.getElementById('authOverlay');
+    if (loading) loading.classList.add('active');
+    if (overlay) overlay.style.display = 'flex';
+  }
+  
+  function hideAuthLoading() {
+    var loading = document.getElementById('authLoading');
+    if (loading) loading.classList.remove('active');
   }
   function doLogin() {
     var nick = (document.getElementById('authLoginNick') || {}).value.trim();
@@ -2160,17 +2232,19 @@
         }
         saveAll();
         closeAuthModal();
-        renderHeaderAuth();
-        renderAuthGate();
-        renderPet();
-        renderAttendance();
-        var card = document.getElementById('attendanceCard');
-        if (card) card.style.display = 'block';
-        if (userProfile && userProfile.nickname) {
-          showToast(userProfile.nickname + '님 환영해요!');
-        } else {
-          showToast('로그인 성공!');
-        }
+        setTimeout(function() {
+          renderHeaderAuth();
+          renderAuthGate();
+          renderPet();
+          renderAttendance();
+          var card = document.getElementById('attendanceCard');
+          if (card) card.style.display = 'block';
+          if (userProfile && userProfile.nickname) {
+            showWelcomeModal(userProfile.nickname);
+          } else {
+            showWelcomeModal();
+          }
+        }, 300);
       })
       .catch(function (err) {
         console.error('Login error:', err, 'URL:', url, 'API_BASE:', API_BASE);
@@ -2207,15 +2281,19 @@
         isLoggedIn = true;
         saveAll();
         closeAuthModal();
-        renderHeaderAuth();
-        renderAttendance();
-        var card = document.getElementById('attendanceCard');
-        if (card) card.style.display = 'block';
-        if (userProfile && userProfile.nickname) {
-          showToast('가입 완료! ' + userProfile.nickname + '님 환영해요.');
-        } else {
-          showToast('가입 완료!');
-        }
+        setTimeout(function() {
+          renderHeaderAuth();
+          renderAuthGate();
+          renderPet();
+          renderAttendance();
+          var card = document.getElementById('attendanceCard');
+          if (card) card.style.display = 'block';
+          if (userProfile && userProfile.nickname) {
+            showWelcomeModal(userProfile.nickname);
+          } else {
+            showWelcomeModal();
+          }
+        }, 300);
       })
       .catch(function (err) {
         console.error('Signup error:', err, 'URL:', url);
@@ -2347,6 +2425,8 @@
         showToast('카카오 SDK가 로드되지 않았어요. 카카오 개발자 앱 설정이 필요해요.');
         return;
       }
+      // 로딩 표시
+      showAuthLoading();
       Kakao.Auth.login({
         // 닉네임만 요청 (이메일은 권한 없음 상태이므로 제외)
         scope: 'profile_nickname',
@@ -2391,12 +2471,14 @@
             },
             fail: function(err) {
               console.error('Kakao API error:', err);
+              hideAuthLoading();
               showToast('카카오 사용자 정보를 가져올 수 없어요: ' + (err.error_description || err.error || '알 수 없는 오류'));
             }
           });
         },
         fail: function(err) {
           console.error('Kakao Auth error:', err);
+          hideAuthLoading();
           showToast('카카오 로그인에 실패했어요: ' + (err.error_description || err.error || '알 수 없는 오류'));
         }
       });
@@ -2464,6 +2546,7 @@
       return { ok: false, body: { error: '네트워크 오류: ' + err.message } };
     }).then(function (x) {
       if (!x || !x.ok) {
+        hideAuthLoading();
         var errorMsg = x && x.body && x.body.error ? x.body.error : '소셜 로그인에 실패했어요.';
         if (x && x.body && x.body.details) {
           console.error('Server error details:', x.body.details);
@@ -2475,6 +2558,7 @@
         return null;
       }
       if (!x.body || !x.body.user || !x.body.token) {
+        hideAuthLoading();
         showToast('서버 응답이 올바르지 않아요.');
         return null;
       }
@@ -2484,11 +2568,13 @@
       
       // userProfile이 제대로 설정되었는지 확인
       if (!userProfile || !userProfile.nickname) {
+        hideAuthLoading();
         console.error('userProfile is invalid:', userProfile);
         showToast('사용자 정보를 가져오는 중 오류가 났어요.');
         return null;
       }
       
+      hideAuthLoading();
       return fetch(API_BASE + '/api/user/data', { headers: { 'Authorization': 'Bearer ' + x.body.token } });
     }).then(function (r) {
       if (!r) {
@@ -2496,13 +2582,15 @@
         if (userProfile && userProfile.nickname) {
           saveAll();
           closeAuthModal();
-          renderHeaderAuth();
-          renderAuthGate();
-          renderPet();
-          renderAttendance();
-          var card = document.getElementById('attendanceCard');
-          if (card) card.style.display = 'block';
-          showToast(userProfile.nickname + '님 환영해요!');
+          setTimeout(function() {
+            renderHeaderAuth();
+            renderAuthGate();
+            renderPet();
+            renderAttendance();
+            var card = document.getElementById('attendanceCard');
+            if (card) card.style.display = 'block';
+            showWelcomeModal(userProfile.nickname);
+          }, 300);
         }
         return null;
       }
@@ -2512,13 +2600,15 @@
         if (userProfile && userProfile.nickname) {
           saveAll();
           closeAuthModal();
-          renderHeaderAuth();
-          renderAuthGate();
-          renderPet();
-          renderAttendance();
-          var card = document.getElementById('attendanceCard');
-          if (card) card.style.display = 'block';
-          showToast(userProfile.nickname + '님 환영해요! (데이터는 새로 시작합니다)');
+          setTimeout(function() {
+            renderHeaderAuth();
+            renderAuthGate();
+            renderPet();
+            renderAttendance();
+            var card = document.getElementById('attendanceCard');
+            if (card) card.style.display = 'block';
+            showWelcomeModal(userProfile.nickname);
+          }, 300);
         }
         return null;
       }
@@ -2535,30 +2625,53 @@
       }
       saveAll();
       closeAuthModal();
-      renderHeaderAuth();
-      renderAuthGate();
-      renderPet();
-      renderAttendance();
-      var card = document.getElementById('attendanceCard');
-      if (card) card.style.display = 'block';
-      if (userProfile && userProfile.nickname) {
-        showToast(userProfile.nickname + '님 환영해요!');
-      } else {
-        showToast('로그인 성공!');
-      }
-    }).catch(function (err) {
-      console.error('Social login error:', err);
-      // 로그인은 성공했지만 데이터 로드 실패
-      if (userProfile && userProfile.nickname) {
-        saveAll();
-        closeAuthModal();
+      setTimeout(function() {
         renderHeaderAuth();
         renderAuthGate();
         renderPet();
         renderAttendance();
         var card = document.getElementById('attendanceCard');
         if (card) card.style.display = 'block';
-        showToast(userProfile.nickname + '님 환영해요! (데이터 로드 중 일부 오류 발생)');
+        if (userProfile && userProfile.nickname) {
+          showWelcomeModal(userProfile.nickname);
+        } else {
+          showWelcomeModal();
+        }
+      }, 300);
+    }).catch(function(err) {
+      hideAuthLoading();
+      console.error('User data load error:', err);
+      if (userProfile && userProfile.nickname) {
+        saveAll();
+        closeAuthModal();
+        setTimeout(function() {
+          renderHeaderAuth();
+          renderAuthGate();
+          renderPet();
+          renderAttendance();
+          var card = document.getElementById('attendanceCard');
+          if (card) card.style.display = 'block';
+          showWelcomeModal(userProfile.nickname);
+        }, 300);
+      } else {
+        showToast('로그인 중 오류가 났어요: ' + (err.message || '알 수 없는 오류'));
+      }
+    }).catch(function (err) {
+      hideAuthLoading();
+      console.error('Social login error:', err);
+      // 로그인은 성공했지만 데이터 로드 실패
+      if (userProfile && userProfile.nickname) {
+        saveAll();
+        closeAuthModal();
+        setTimeout(function() {
+          renderHeaderAuth();
+          renderAuthGate();
+          renderPet();
+          renderAttendance();
+          var card = document.getElementById('attendanceCard');
+          if (card) card.style.display = 'block';
+          showWelcomeModal(userProfile.nickname);
+        }, 300);
       } else {
         showToast('로그인 중 오류가 났어요: ' + (err.message || '알 수 없는 오류'));
       }
@@ -3136,6 +3249,12 @@
     if (btnGoogleLogin) btnGoogleLogin.addEventListener('click', function() { doSocialLogin('google'); });
     var btnGoogleSignup = document.getElementById('btnGoogleSignup');
     if (btnGoogleSignup) btnGoogleSignup.addEventListener('click', function() { doSocialLogin('google'); });
+    var btnWelcomeClose = document.getElementById('btnWelcomeClose');
+    if (btnWelcomeClose) btnWelcomeClose.addEventListener('click', hideWelcomeModal);
+    var welcomeModal = document.getElementById('welcomeModal');
+    if (welcomeModal) welcomeModal.addEventListener('click', function(e) {
+      if (e.target === welcomeModal) hideWelcomeModal();
+    });
     var btnSelectPet = document.getElementById('btnSelectPet');
     if (btnSelectPet) btnSelectPet.addEventListener('click', openPetSelectModal);
     var btnConfirmPet = document.getElementById('btnConfirmPet');
