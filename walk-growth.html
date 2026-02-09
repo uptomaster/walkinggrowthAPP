@@ -123,6 +123,7 @@
     .auth-loading.active { display: block; }
     .auth-loading-spinner { width: 40px; height: 40px; border: 3px solid var(--accent-dim); border-top-color: var(--accent); border-radius: 50%; margin: 0 auto 1rem; animation: spin 0.8s linear infinite; }
     @keyframes spin { to { transform: rotate(360deg); } }
+    .tutorial-modal { display: flex; position: fixed; inset: 0; background: rgba(0,0,0,0.8); z-index: 400; align-items: center; justify-content: center; padding: 1rem; }
     .welcome-modal { display: none; position: fixed; inset: 0; background: rgba(0,0,0,0.7); z-index: 300; align-items: center; justify-content: center; padding: 1rem; animation: fadeIn 0.3s ease; }
     .welcome-modal.show { display: flex; }
     .welcome-content { background: var(--card); border-radius: var(--radius-lg); padding: 2rem; max-width: 320px; width: 100%; text-align: center; border: 1px solid rgba(255,255,255,0.08); box-shadow: var(--shadow); animation: slideUp 0.4s ease; }
@@ -214,6 +215,9 @@
     .page { display: none; width: 100%; animation: fadeIn 0.25s ease; }
     .page.active { display: block; }
     @keyframes fadeIn { from { opacity: 0; } to { opacity: 1; } }
+    @keyframes slideDown { from { transform: translateX(-50%) translateY(-20px); opacity: 0; } to { transform: translateX(-50%) translateY(0); opacity: 1; } }
+    @keyframes slideUp { from { transform: translateX(-50%) translateY(0); opacity: 1; } to { transform: translateX(-50%) translateY(-20px); opacity: 0; } }
+    .wild-animal-notification { animation: slideDown 0.3s ease; }
 
     /* ===== 카드 공통 ===== */
     .step-card, .walk-card, .avatar-section, .story-section {
@@ -827,11 +831,33 @@
           <p class="achievement-title">🏆 업적</p>
           <div class="achievement-grid" id="achievementGrid"></div>
         </div>
+        <div class="animal-collection-section" style="margin-top: 2rem;">
+          <p class="achievement-title">🦋 동물 컬렉션</p>
+          <p style="color: var(--text-muted); font-size: 0.85rem; margin-bottom: 1rem;">산책 중 발견한 동물들을 모아보세요!</p>
+          <div class="animal-collection-grid" id="animalCollectionGrid" style="display: grid; grid-template-columns: repeat(auto-fill, minmax(100px, 1fr)); gap: 1rem;"></div>
+        </div>
       </div>
     </section>
     </div>
 
     <!-- 로그인/회원가입 (비로그인 시 첫 화면, 로그인 후 메인만 표시) -->
+    <!-- 튜토리얼 모달 -->
+    <div class="tutorial-modal" id="tutorialModal" style="display: none;">
+      <div class="tutorial-content" style="background: var(--card); border-radius: var(--radius-lg); padding: 2rem; max-width: 400px; width: 90%; position: relative; animation: slideUp 0.4s ease;">
+        <button type="button" class="tutorial-close" id="tutorialClose" style="position: absolute; top: 1rem; right: 1rem; background: none; border: none; color: var(--text-muted); font-size: 1.5rem; cursor: pointer;">×</button>
+        <div class="tutorial-slide" id="tutorialSlide">
+          <div class="tutorial-icon" id="tutorialIcon" style="font-size: 4rem; text-align: center; margin-bottom: 1rem;">👋</div>
+          <div class="tutorial-title" id="tutorialTitle" style="font-size: 1.25rem; font-weight: 600; text-align: center; margin-bottom: 0.5rem;">WalkStory에 오신 것을 환영합니다!</div>
+          <div class="tutorial-text" id="tutorialText" style="color: var(--text-muted); text-align: center; margin-bottom: 1.5rem; line-height: 1.6;"></div>
+          <div class="tutorial-progress" id="tutorialProgress" style="text-align: center; margin-bottom: 1rem; font-size: 0.85rem; color: var(--text-muted);"></div>
+          <div class="tutorial-buttons" style="display: flex; gap: 0.5rem;">
+            <button type="button" class="btn-tutorial-prev" id="btnTutorialPrev" style="flex: 1; background: var(--bg-soft); color: var(--text); border: none; border-radius: var(--radius); padding: 0.75rem; font-weight: 600; cursor: pointer; display: none;">이전</button>
+            <button type="button" class="btn-tutorial-next" id="btnTutorialNext" style="flex: 1; background: var(--accent); color: var(--bg); border: none; border-radius: var(--radius); padding: 0.75rem; font-weight: 600; cursor: pointer;">다음</button>
+          </div>
+        </div>
+      </div>
+    </div>
+
     <!-- 환영 모달 -->
     <div class="welcome-modal" id="welcomeModal">
       <div class="welcome-content">
@@ -918,7 +944,7 @@
           </div>
           <button type="button" class="auth-link-btn" id="btnBackToLogin2" style="width: 100%; margin-top: 0.5rem; background: none; border: none; color: var(--accent); cursor: pointer; padding: 0.5rem;">← 로그인으로 돌아가기</button>
         </div>
-        <p class="auth-hint">※ 비밀번호는 서버에서 암호화되어 저장되며, 게임 데이터는 DB에 동기화됩니다.</p>
+        
         <button type="button" class="auth-close" id="authClose" aria-label="닫기">✕</button>
       </div>
     </div>
@@ -970,7 +996,10 @@
     user: 'walk_user',
     loggedIn: 'walk_logged_in',
     attendanceDate: 'walk_attendance_date',
-    attendanceStreak: 'walk_attendance_streak'
+    attendanceStreak: 'walk_attendance_streak',
+    tutorialCompleted: 'walk_tutorial_completed',
+    wildAnimals: 'walk_wild_animals',
+    capturedAnimals: 'walk_captured_animals'
   };
   var ATTENDANCE_DAILY_GOLD = [10, 15, 20, 25, 30, 40];
   var ATTENDANCE_7DAY_BOX_NAME = '위클리 마스터 선물상자';
@@ -1012,6 +1041,29 @@
     var nextXp = 50 * level * level;
     return { level: level, current: xp - prevXp, need: nextXp - prevXp };
   }
+  // 야생 동물 데이터
+  var WILD_ANIMALS = [
+    // 커먼 (60%)
+    { id: 'rabbit', name: '토끼', emoji: '🐰', rarity: 'common', spawnChance: 0.3, description: '귀여운 토끼예요!' },
+    { id: 'squirrel', name: '다람쥐', emoji: '🐿️', rarity: 'common', spawnChance: 0.3, description: '재빠른 다람쥐예요!' },
+    { id: 'bird', name: '새', emoji: '🐦', rarity: 'common', spawnChance: 0.25, description: '자유로운 새예요!' },
+    { id: 'duck', name: '오리', emoji: '🦆', rarity: 'common', spawnChance: 0.15, description: '물가의 오리예요!' },
+    // 레어 (25%)
+    { id: 'deer', name: '사슴', emoji: '🦌', rarity: 'rare', spawnChance: 0.15, description: '우아한 사슴이에요!' },
+    { id: 'fox', name: '여우', emoji: '🦊', rarity: 'rare', spawnChance: 0.12, description: '영리한 여우예요!' },
+    { id: 'hedgehog', name: '고슴도치', emoji: '🦔', rarity: 'rare', spawnChance: 0.1, description: '뾰족한 고슴도치예요!' },
+    { id: 'owl', name: '부엉이', emoji: '🦉', rarity: 'rare', spawnChance: 0.08, description: '지혜로운 부엉이예요!' },
+    // 에픽 (12%)
+    { id: 'wolf', name: '늑대', emoji: '🐺', rarity: 'epic', spawnChance: 0.05, description: '강인한 늑대예요!' },
+    { id: 'bear', name: '곰', emoji: '🐻', rarity: 'epic', spawnChance: 0.04, description: '힘센 곰이에요!' },
+    { id: 'eagle', name: '독수리', emoji: '🦅', rarity: 'epic', spawnChance: 0.03, description: '위엄 있는 독수리예요!' },
+    // 레전드 (3%)
+    { id: 'phoenix', name: '불사조', emoji: '🔥', rarity: 'legend', spawnChance: 0.01, description: '전설의 불사조예요!' },
+    { id: 'dragon', name: '용', emoji: '🐉', rarity: 'legend', spawnChance: 0.008, description: '신화 속 용이에요!' },
+    { id: 'unicorn', name: '유니콘', emoji: '🦄', rarity: 'legend', spawnChance: 0.007, description: '마법의 유니콘이에요!' },
+    { id: 'pegasus', name: '페가수스', emoji: '🦋', rarity: 'legend', spawnChance: 0.005, description: '하늘을 나는 페가수스예요!' }
+  ];
+  
   var ACHIEVEMENTS = [
     { id: 'first_walk', name: '첫 걸음', desc: '첫 산책 시작', icon: '👣', check: function() { return totalXp >= 10; } },
     { id: 'km1', name: '1km 달성', desc: '총 1km 산책', icon: '🛤️', check: function() { return totalXp >= 100; } },
@@ -1240,6 +1292,10 @@
   var lastPositionTime = 0;
   var MIN_SEGMENT_KM = 0.005;
   var MAX_SPEED_KMH = 12;
+  var tutorialCompleted = false;
+  var wildAnimals = []; // 현재 주변에 스폰된 야생 동물들
+  var capturedAnimals = []; // 포획한 동물 컬렉션
+  var nearbyAnimalsCheckInterval = null;
   var supplyDateToday = '';
   var supplyCountToday = 0;
   var walkMapEl = null;
@@ -1345,6 +1401,18 @@
       if (tw != null) totalWalkDistanceKm = parseFloat(tw);
     } catch (e) {}
     try {
+      var tc = localStorage.getItem(STORAGE_KEYS.tutorialCompleted);
+      if (tc === 'true') tutorialCompleted = true;
+    } catch (e) {}
+    try {
+      var wa = localStorage.getItem(STORAGE_KEYS.wildAnimals);
+      if (wa) wildAnimals = JSON.parse(wa);
+    } catch (e) {}
+    try {
+      var ca = localStorage.getItem(STORAGE_KEYS.capturedAnimals);
+      if (ca) capturedAnimals = JSON.parse(ca);
+    } catch (e) {}
+    try {
       var ct = localStorage.getItem(STORAGE_KEYS.currentTitle);
       if (ct) currentTitleId = ct;
     } catch (e) {}
@@ -1389,6 +1457,9 @@
       localStorage.setItem(STORAGE_KEYS.steps, String(steps));
       localStorage.setItem(STORAGE_KEYS.date, todayStr());
       localStorage.setItem(STORAGE_KEYS.lifetime, String(lifetimeSteps));
+      localStorage.setItem(STORAGE_KEYS.tutorialCompleted, tutorialCompleted ? 'true' : 'false');
+      localStorage.setItem(STORAGE_KEYS.wildAnimals, JSON.stringify(wildAnimals));
+      localStorage.setItem(STORAGE_KEYS.capturedAnimals, JSON.stringify(capturedAnimals));
       localStorage.setItem(STORAGE_KEYS.avatar, JSON.stringify(avatar));
       localStorage.setItem(STORAGE_KEYS.inventory, JSON.stringify(inventory));
       localStorage.setItem(STORAGE_KEYS.equipped, JSON.stringify(equipped));
@@ -1402,6 +1473,9 @@
       localStorage.setItem(STORAGE_KEYS.gold, String(gold));
       localStorage.setItem(STORAGE_KEYS.totalWalkKm, String(totalWalkDistanceKm));
       localStorage.setItem(STORAGE_KEYS.currentTitle, currentTitleId);
+      localStorage.setItem(STORAGE_KEYS.tutorialCompleted, tutorialCompleted ? 'true' : 'false');
+      localStorage.setItem(STORAGE_KEYS.wildAnimals, JSON.stringify(wildAnimals));
+      localStorage.setItem(STORAGE_KEYS.capturedAnimals, JSON.stringify(capturedAnimals));
       localStorage.setItem(STORAGE_KEYS.questDate, todayStr());
       localStorage.setItem(STORAGE_KEYS.questProgress, String(questGachaCount));
       localStorage.setItem('walk_quest_claimed', JSON.stringify(questClaimed));
@@ -1688,7 +1762,126 @@
       pathCoords.push({ lat: lat, lon: lon });
       lastPositionTime = nowMs;
     }
+    // 야생 동물 스폰 체크 (50m마다)
+    checkWildAnimalSpawn(lat, lon);
     renderWalk();
+  }
+  
+  function checkWildAnimalSpawn(lat, lon) {
+    // 기존 동물과 너무 가까우면 스킵
+    var tooClose = wildAnimals.some(function(animal) {
+      return haversineKm(animal.lat, animal.lon, lat, lon) < 0.05; // 50m 이내
+    });
+    if (tooClose) return;
+    
+    // 랜덤 스폰 (5% 확률)
+    if (Math.random() > 0.05) return;
+    
+    // 희귀도에 따라 동물 선택
+    var rarityRoll = Math.random() * 100;
+    var targetRarity = 'common';
+    if (rarityRoll < 3) targetRarity = 'legend';
+    else if (rarityRoll < 15) targetRarity = 'epic';
+    else if (rarityRoll < 40) targetRarity = 'rare';
+    
+    var availableAnimals = WILD_ANIMALS.filter(function(a) { return a.rarity === targetRarity; });
+    if (availableAnimals.length === 0) return;
+    
+    var animal = availableAnimals[Math.floor(Math.random() * availableAnimals.length)];
+    var spawnAnimal = {
+      id: 'wild_' + Date.now() + '_' + Math.random().toString(36).substr(2, 9),
+      animalId: animal.id,
+      name: animal.name,
+      emoji: animal.emoji,
+      rarity: animal.rarity,
+      description: animal.description,
+      lat: lat,
+      lon: lon,
+      spawnTime: Date.now(),
+      expiresAt: Date.now() + (5 * 60 * 1000) // 5분 후 사라짐
+    };
+    
+    wildAnimals.push(spawnAnimal);
+    saveAll();
+    showWildAnimalNearby(spawnAnimal);
+  }
+  
+  function showWildAnimalNearby(animal) {
+    var rarityLabel = { common: '커먼', rare: '레어', epic: '에픽', legend: '레전드' }[animal.rarity];
+    var rarityColor = { 
+      common: 'var(--rarity-common)', 
+      rare: 'var(--rarity-rare)', 
+      epic: 'var(--rarity-epic)', 
+      legend: 'var(--rarity-legend)' 
+    }[animal.rarity];
+    
+    showToast(animal.emoji + ' ' + animal.name + ' (' + rarityLabel + ') 주변에 나타났어요!', 5000);
+    
+    // 동물 포획 알림 표시
+    var notification = document.createElement('div');
+    notification.className = 'wild-animal-notification';
+    notification.style.cssText = 'position: fixed; top: 80px; left: 50%; transform: translateX(-50%); background: var(--card); border: 2px solid ' + rarityColor + '; border-radius: var(--radius-lg); padding: 1rem; z-index: 250; box-shadow: var(--shadow-glow); animation: slideDown 0.3s ease; max-width: 90%;';
+    notification.innerHTML = '<div style="text-align: center;"><div style="font-size: 3rem; margin-bottom: 0.5rem;">' + animal.emoji + '</div><div style="font-weight: 600; color: ' + rarityColor + '; margin-bottom: 0.25rem;">' + animal.name + '</div><div style="font-size: 0.85rem; color: var(--text-muted); margin-bottom: 0.75rem;">' + rarityLabel + ' · ' + animal.description + '</div><button type="button" class="btn-capture-animal" data-animal-id="' + animal.id + '" style="background: ' + rarityColor + '; color: var(--bg); border: none; border-radius: var(--radius); padding: 0.75rem 1.5rem; font-weight: 600; cursor: pointer; width: 100%;">포획하기</button></div>';
+    
+    document.body.appendChild(notification);
+    
+    var captureBtn = notification.querySelector('.btn-capture-animal');
+    captureBtn.addEventListener('click', function() {
+      captureWildAnimal(animal.id);
+      document.body.removeChild(notification);
+    });
+    
+    // 5초 후 자동 제거
+    setTimeout(function() {
+      if (notification.parentNode) {
+        notification.style.animation = 'slideUp 0.3s ease';
+        setTimeout(function() {
+          if (notification.parentNode) document.body.removeChild(notification);
+        }, 300);
+      }
+    }, 5000);
+  }
+  
+  function captureWildAnimal(animalId) {
+    var animal = wildAnimals.find(function(a) { return a.id === animalId; });
+    if (!animal) {
+      showToast('동물을 찾을 수 없어요.');
+      return;
+    }
+    
+    // 포획 확률 (희귀도에 따라)
+    var captureRate = { common: 0.9, rare: 0.7, epic: 0.5, legend: 0.3 }[animal.rarity];
+    if (Math.random() > captureRate) {
+      showToast('포획에 실패했어요. 동물이 도망갔어요!');
+      wildAnimals = wildAnimals.filter(function(a) { return a.id !== animalId; });
+      saveAll();
+      return;
+    }
+    
+    // 포획 성공
+    var captured = {
+      id: 'captured_' + Date.now() + '_' + Math.random().toString(36).substr(2, 9),
+      animalId: animal.animalId,
+      name: animal.name,
+      emoji: animal.emoji,
+      rarity: animal.rarity,
+      description: animal.description,
+      capturedAt: Date.now()
+    };
+    
+    capturedAnimals.push(captured);
+    wildAnimals = wildAnimals.filter(function(a) { return a.id !== animalId; });
+    
+    var rarityLabel = { common: '커먼', rare: '레어', epic: '에픽', legend: '레전드' }[animal.rarity];
+    showToast('🎉 ' + animal.emoji + ' ' + animal.name + ' (' + rarityLabel + ') 포획 성공!');
+    
+    // 골드 보상
+    var goldReward = { common: 10, rare: 30, epic: 100, legend: 500 }[animal.rarity];
+    gold += goldReward;
+    showToast('💰 +' + goldReward + 'G 획득!');
+    
+    saveAll();
+    renderAnimalCollection();
   }
 
   function startWalk() {
@@ -1951,7 +2144,7 @@
     if (tabId === 'storage') renderStorage();
     if (tabId === 'shop') { renderGold(); }
     if (tabId === 'equipment') { renderEquipped(); renderInventory(); renderEnhanceSelect(); }
-    if (tabId === 'story') { renderStory(); renderAchievements(); }
+    if (tabId === 'story') { renderStory(); renderAchievements(); renderAnimalCollection(); }
   }
   function doGachaPull(premium) {
     var cost = premium ? GACHA_PREMIUM_COST : GACHA_COST;
@@ -2181,6 +2374,84 @@
     if (modal) {
       modal.classList.remove('show');
     }
+    // 튜토리얼이 완료되지 않았으면 표시
+    if (!tutorialCompleted && isLoggedIn) {
+      setTimeout(function() {
+        showTutorial();
+      }, 500);
+    }
+  }
+  
+  var tutorialSteps = [
+    { icon: '👋', title: 'WalkStory에 오신 것을 환영합니다!', text: '걸음으로 키우는 나만의 동물 친구와 함께 산책을 즐겨보세요.' },
+    { icon: '🚶', title: '산책 시작하기', text: '산책 탭에서 코스를 선택하고 "산책 시작" 버튼을 눌러보세요. GPS로 이동 거리가 자동으로 기록됩니다.' },
+    { icon: '🦋', title: '야생 동물 포획하기', text: '산책 중 주변에 나타나는 동물을 발견하면 포획할 수 있어요! 희귀한 동물일수록 골드 보상이 큽니다.' },
+    { icon: '📦', title: '보급 키트 받기', text: '코스를 완주하면 보급 키트를 받을 수 있어요. 장비를 뽑아 캐릭터를 강화하세요!' },
+    { icon: '🎯', title: '퀘스트 완료하기', text: '매일 새로운 퀘스트가 주어집니다. 완료하면 골드를 받을 수 있어요.' },
+    { icon: '🏆', title: '업적 달성하기', text: '다양한 업적을 달성하고 스토리 탭에서 컬렉션을 확인해보세요!' }
+  ];
+  var currentTutorialStep = 0;
+  
+  function showTutorial() {
+    var modal = document.getElementById('tutorialModal');
+    if (!modal) return;
+    currentTutorialStep = 0;
+    updateTutorialSlide();
+    modal.style.display = 'flex';
+  }
+  
+  function hideTutorial() {
+    var modal = document.getElementById('tutorialModal');
+    if (modal) modal.style.display = 'none';
+    tutorialCompleted = true;
+    saveAll();
+  }
+  
+  function updateTutorialSlide() {
+    var slide = tutorialSteps[currentTutorialStep];
+    if (!slide) {
+      hideTutorial();
+      return;
+    }
+    
+    var iconEl = document.getElementById('tutorialIcon');
+    var titleEl = document.getElementById('tutorialTitle');
+    var textEl = document.getElementById('tutorialText');
+    var progressEl = document.getElementById('tutorialProgress');
+    var prevBtn = document.getElementById('btnTutorialPrev');
+    var nextBtn = document.getElementById('btnTutorialNext');
+    
+    if (iconEl) iconEl.textContent = slide.icon;
+    if (titleEl) titleEl.textContent = slide.title;
+    if (textEl) textEl.textContent = slide.text;
+    if (progressEl) progressEl.textContent = (currentTutorialStep + 1) + ' / ' + tutorialSteps.length;
+    if (prevBtn) prevBtn.style.display = currentTutorialStep === 0 ? 'none' : 'block';
+    if (nextBtn) nextBtn.textContent = currentTutorialStep === tutorialSteps.length - 1 ? '시작하기' : '다음';
+  }
+  
+  function nextTutorialStep() {
+    if (currentTutorialStep < tutorialSteps.length - 1) {
+      currentTutorialStep++;
+      updateTutorialSlide();
+    } else {
+      hideTutorial();
+    }
+  }
+  
+  function prevTutorialStep() {
+    if (currentTutorialStep > 0) {
+      currentTutorialStep--;
+      updateTutorialSlide();
+    }
+  }
+  
+  // 야생 동물 만료 체크
+  function checkExpiredWildAnimals() {
+    var now = Date.now();
+    wildAnimals = wildAnimals.filter(function(animal) {
+      return animal.expiresAt > now;
+    });
+    saveAll();
   }
   
   function showAuthLoading() {
@@ -3066,6 +3337,41 @@
     var sm = document.getElementById('storyMilestone');
     if (st) st.textContent = s.text;
     if (sm) sm.textContent = s.milestone;
+    renderAnimalCollection();
+  }
+  
+  function renderAnimalCollection() {
+    var grid = document.getElementById('animalCollectionGrid');
+    if (!grid) return;
+    grid.innerHTML = '';
+    
+    if (capturedAnimals.length === 0) {
+      grid.innerHTML = '<div style="grid-column: 1 / -1; text-align: center; padding: 2rem; color: var(--text-muted);">아직 포획한 동물이 없어요.<br>산책을 시작하면 주변에 동물이 나타날 거예요!</div>';
+      return;
+    }
+    
+    // 희귀도별로 정렬
+    var rarityOrder = { legend: 0, epic: 1, rare: 2, common: 3 };
+    var sorted = capturedAnimals.slice().sort(function(a, b) {
+      return rarityOrder[a.rarity] - rarityOrder[b.rarity];
+    });
+    
+    sorted.forEach(function(animal) {
+      var rarityColor = { 
+        common: 'var(--rarity-common)', 
+        rare: 'var(--rarity-rare)', 
+        epic: 'var(--rarity-epic)', 
+        legend: 'var(--rarity-legend)' 
+      }[animal.rarity];
+      var rarityLabel = { common: '커먼', rare: '레어', epic: '에픽', legend: '레전드' }[animal.rarity];
+      
+      var card = document.createElement('div');
+      card.style.cssText = 'background: var(--card); border: 2px solid ' + rarityColor + '; border-radius: var(--radius-lg); padding: 1rem; text-align: center; transition: transform 0.2s ease;';
+      card.onmouseover = function() { this.style.transform = 'scale(1.05)'; };
+      card.onmouseout = function() { this.style.transform = 'scale(1)'; };
+      card.innerHTML = '<div style="font-size: 3rem; margin-bottom: 0.5rem;">' + animal.emoji + '</div><div style="font-weight: 600; margin-bottom: 0.25rem;">' + animal.name + '</div><div style="font-size: 0.75rem; color: ' + rarityColor + ';">' + rarityLabel + '</div>';
+      grid.appendChild(card);
+    });
   }
   
   function openPetSelectModal() {
@@ -3255,6 +3561,16 @@
     if (welcomeModal) welcomeModal.addEventListener('click', function(e) {
       if (e.target === welcomeModal) hideWelcomeModal();
     });
+    var btnTutorialNext = document.getElementById('btnTutorialNext');
+    if (btnTutorialNext) btnTutorialNext.addEventListener('click', nextTutorialStep);
+    var btnTutorialPrev = document.getElementById('btnTutorialPrev');
+    if (btnTutorialPrev) btnTutorialPrev.addEventListener('click', prevTutorialStep);
+    var tutorialClose = document.getElementById('tutorialClose');
+    if (tutorialClose) tutorialClose.addEventListener('click', hideTutorial);
+    var tutorialModal = document.getElementById('tutorialModal');
+    if (tutorialModal) tutorialModal.addEventListener('click', function(e) {
+      if (e.target === tutorialModal) hideTutorial();
+    });
     var btnSelectPet = document.getElementById('btnSelectPet');
     if (btnSelectPet) btnSelectPet.addEventListener('click', openPetSelectModal);
     var btnConfirmPet = document.getElementById('btnConfirmPet');
@@ -3332,6 +3648,10 @@
       var themeToggle = document.getElementById('themeToggle');
       if (themeToggle && document.body.getAttribute('data-theme') === 'morning') themeToggle.textContent = '☀️';
       initSensorAndStatus();
+      // 만료된 야생 동물 제거
+      checkExpiredWildAnimals();
+      // 30초마다 만료 체크
+      setInterval(checkExpiredWildAnimals, 30000);
     });
   }
 
