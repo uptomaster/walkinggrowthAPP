@@ -50,22 +50,52 @@ module.exports = async (req, res) => {
     const emailTrimmed = email ? email.trim().toLowerCase() : null;
     // 닉네임 중복 확인 및 처리
     let finalNickname = (nickname || '').trim();
+    console.log('Nickname processing:', { original: nickname, trimmed: finalNickname, length: finalNickname.length });
     if (!finalNickname || finalNickname.length < 2) {
       finalNickname = '카카오사용자' + Math.floor(Math.random() * 10000);
+      console.log('Using default nickname:', finalNickname);
     }
+    // 최종 검증: NULL이나 빈 문자열이면 안 됨
+    if (!finalNickname || finalNickname.trim().length === 0) {
+      console.error('Final nickname is empty after processing!', { nickname, finalNickname });
+      return res.status(400).json({ error: '닉네임을 생성할 수 없어요.' });
+    }
+    finalNickname = finalNickname.trim(); // 최종 trim
     let suffix = 1;
     const originalNickname = finalNickname;
-    while (await findUserByNickname(finalNickname)) {
-      finalNickname = originalNickname + suffix;
-      suffix++;
-      if (suffix > 1000) {
-        // 무한 루프 방지
-        finalNickname = originalNickname + '_' + Date.now();
-        break;
+    // 닉네임 중복 확인 및 자동 변경
+    let existingUser = await findUserByNickname(finalNickname);
+    if (existingUser) {
+      console.log('Nickname already exists:', { nickname: finalNickname, existingUserId: existingUser.id, existingUserProvider: existingUser.social_provider });
+      // 기존 사용자가 소셜 계정이 아닌 경우 (일반 회원가입 사용자)
+      if (!existingUser.social_provider) {
+        console.log('Existing user is not a social user, generating new nickname...');
       }
+      // 중복 닉네임 처리: 숫자 suffix 추가
+      while (existingUser) {
+        finalNickname = originalNickname + suffix;
+        suffix++;
+        if (suffix > 1000) {
+          // 무한 루프 방지: 타임스탬프 추가
+          finalNickname = originalNickname + '_' + Date.now();
+          console.log('Using timestamp suffix for nickname:', finalNickname);
+          break;
+        }
+        existingUser = await findUserByNickname(finalNickname);
+      }
+      console.log('Final nickname after conflict resolution:', finalNickname);
     }
     
-    console.log('Creating social user:', { finalNickname, provider, socialId: socialId?.substring(0, 10) + '...', email: emailTrimmed ? 'provided' : 'null' });
+    // INSERT 전 최종 중복 확인 (race condition 방지)
+    const finalCheck = await findUserByNickname(finalNickname);
+    if (finalCheck) {
+      console.error('Nickname conflict detected right before insert!', { finalNickname, existingUserId: finalCheck.id });
+      // 타임스탬프로 강제 변경
+      finalNickname = originalNickname + '_' + Date.now();
+      console.log('Forced nickname change:', finalNickname);
+    }
+    
+    console.log('Creating social user:', { finalNickname, finalNicknameLength: finalNickname.length, provider, socialId: socialId?.substring(0, 10) + '...', email: emailTrimmed ? 'provided' : 'null' });
     let userId;
     try {
       userId = await createSocialUser(finalNickname, provider, socialId, emailTrimmed);
@@ -137,10 +167,47 @@ module.exports = async (req, res) => {
     }
     // PostgreSQL 제약 조건 위반 에러 처리
     if (err.code === '23505') {
+      console.error('Unique constraint violation:', { constraint: err.constraint, detail: err.detail });
       if (err.constraint && err.constraint.includes('nickname')) {
-        return res.status(409).json({ error: '이미 사용 중인 닉네임이에요.' });
+        // 닉네임 중복: 재시도 로직 (타임스탬프 추가)
+        const retryNickname = (req.body?.nickname || '카카오사용자').trim() + '_' + Date.now();
+        console.log('Retrying with new nickname:', retryNickname);
+        try {
+          const retryUserId = await createSocialUser(retryNickname, req.body?.provider, req.body?.socialId, req.body?.email);
+          const retryUser = await findUserById(retryUserId);
+          const retryToken = jwt.sign(
+            { userId: retryUser.id, nickname: retryUser.nickname },
+            JWT_SECRET,
+            { expiresIn: '30d' }
+          );
+          return res.status(201).json({
+            token: retryToken,
+            user: { id: retryUser.id, nickname: retryUser.nickname },
+            message: '닉네임이 중복되어 자동으로 변경되었어요.'
+          });
+        } catch (retryErr) {
+          console.error('Retry failed:', retryErr);
+          return res.status(409).json({ error: '이미 사용 중인 닉네임이에요. 다른 닉네임을 사용해 주세요.' });
+        }
       }
       if (err.constraint && err.constraint.includes('social')) {
+        // 소셜 계정 중복: 기존 사용자 찾기 시도
+        try {
+          const existingSocialUser = await findUserBySocial(req.body?.provider, req.body?.socialId);
+          if (existingSocialUser) {
+            const token = jwt.sign(
+              { userId: existingSocialUser.id, nickname: existingSocialUser.nickname },
+              JWT_SECRET,
+              { expiresIn: '30d' }
+            );
+            return res.json({
+              token,
+              user: { id: existingSocialUser.id, nickname: existingSocialUser.nickname },
+            });
+          }
+        } catch (findErr) {
+          console.error('Failed to find existing social user:', findErr);
+        }
         return res.status(409).json({ error: '이미 연결된 소셜 계정이에요.' });
       }
       return res.status(409).json({ error: '이미 존재하는 계정이에요.' });

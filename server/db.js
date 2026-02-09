@@ -21,8 +21,13 @@ async function initTables() {
         password_reset_expires TIMESTAMPTZ,
         social_provider TEXT,
         social_id TEXT,
-        created_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+        created_at TIMESTAMPTZ NOT NULL DEFAULT CURRENT_TIMESTAMP
       );
+    `);
+    
+    // created_at 컬럼이 없으면 추가 (기존 테이블 마이그레이션)
+    await client.query(`
+      ALTER TABLE users ADD COLUMN IF NOT EXISTS created_at TIMESTAMPTZ NOT NULL DEFAULT CURRENT_TIMESTAMP;
     `);
     
     // 기존 users 테이블에 새 컬럼 추가 (마이그레이션) - 인덱스 생성 전에 실행해야 함
@@ -130,10 +135,32 @@ async function createUser(nickname, passwordHash, email = null) {
 async function createSocialUser(nickname, provider, socialId, email = null) {
   await ensureInit();
   try {
-    console.log('createSocialUser: Inserting user', { nickname: nickname?.substring(0, 20), provider, socialId: socialId?.substring(0, 10) + '...' });
+    // NULL 체크 및 검증
+    if (!nickname || typeof nickname !== 'string' || nickname.trim().length === 0) {
+      console.error('createSocialUser: Invalid nickname', { nickname, type: typeof nickname });
+      throw new Error('닉네임이 올바르지 않아요.');
+    }
+    if (!provider || typeof provider !== 'string') {
+      console.error('createSocialUser: Invalid provider', { provider, type: typeof provider });
+      throw new Error('소셜 제공자가 올바르지 않아요.');
+    }
+    if (!socialId || (typeof socialId !== 'string' && typeof socialId !== 'number')) {
+      console.error('createSocialUser: Invalid socialId', { socialId, type: typeof socialId });
+      throw new Error('소셜 ID가 올바르지 않아요.');
+    }
+    const nicknameTrimmed = nickname.trim();
+    const providerTrimmed = provider.trim();
+    const socialIdStr = String(socialId).trim();
+    console.log('createSocialUser: Inserting user', { 
+      nickname: nicknameTrimmed.substring(0, 20), 
+      nicknameLength: nicknameTrimmed.length,
+      provider: providerTrimmed, 
+      socialId: socialIdStr.substring(0, 10) + '...',
+      email: email ? 'provided' : 'null'
+    });
     const res = await pool.query(
-      'INSERT INTO users (nickname, password_hash, social_provider, social_id, email) VALUES ($1, NULL, $2, $3, $4) RETURNING id',
-      [nickname, provider, socialId, email]
+      'INSERT INTO users (nickname, password_hash, social_provider, social_id, email, created_at) VALUES ($1, NULL, $2, $3, $4, CURRENT_TIMESTAMP) RETURNING id',
+      [nicknameTrimmed, providerTrimmed, socialIdStr, email]
     );
     console.log('createSocialUser: Insert result', { rowCount: res.rowCount, hasRows: !!res.rows, hasId: !!(res.rows && res.rows[0] && res.rows[0].id) });
     if (!res || !res.rows || !res.rows[0] || !res.rows[0].id) {
