@@ -278,15 +278,15 @@ module.exports = async (req, res) => {
         const statusResults = await Promise.all(
           allMemberIds.map(async (memberId) => {
             const dataResult = await pool.query(
-              `SELECT data FROM user_data WHERE user_id = $1`,
+              `SELECT data_json FROM user_data WHERE user_id = $1`,
               [memberId]
             );
             let isWalking = false;
-            if (dataResult.rows.length > 0 && dataResult.rows[0].data) {
+            if (dataResult.rows.length > 0 && dataResult.rows[0].data_json) {
               try {
-                const userData = typeof dataResult.rows[0].data === 'string' 
-                  ? JSON.parse(dataResult.rows[0].data) 
-                  : dataResult.rows[0].data;
+                const userData = typeof dataResult.rows[0].data_json === 'string' 
+                  ? JSON.parse(dataResult.rows[0].data_json) 
+                  : dataResult.rows[0].data_json;
                 isWalking = userData.walkState === 'walking';
               } catch (e) {
                 console.error('Error parsing user data for walking status:', e);
