@@ -62,16 +62,24 @@ module.exports = async (req, res) => {
            WHERE f.friend_id = $1 AND f.status = 'pending'`,
           [req.userId]
         );
-        // 내 친구 목록 (accepted)
+        // 내 친구 목록 (accepted) - UNION으로 명확하게 분리
         const friends = await pool.query(
           `SELECT 
-             CASE WHEN f.user_id = $1 THEN f.friend_id ELSE f.user_id END as friend_id,
-             CASE WHEN f.user_id = $1 THEN u2.nickname ELSE u1.nickname END as nickname,
+             f.friend_id,
+             u2.nickname,
              f.created_at
            FROM friends f
-           LEFT JOIN users u1 ON f.user_id = u1.id
-           LEFT JOIN users u2 ON f.friend_id = u2.id
-           WHERE (f.user_id = $1 OR f.friend_id = $1) AND f.status = 'accepted'`,
+           JOIN users u2 ON f.friend_id = u2.id
+           WHERE f.user_id = $1 AND f.status = 'accepted'
+           UNION ALL
+           SELECT 
+             f.user_id as friend_id,
+             u1.nickname,
+             f.created_at
+           FROM friends f
+           JOIN users u1 ON f.user_id = u1.id
+           WHERE f.friend_id = $1 AND f.status = 'accepted'
+           ORDER BY created_at DESC`,
           [req.userId]
         );
         return res.json({ 

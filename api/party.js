@@ -156,6 +156,59 @@ module.exports = async (req, res) => {
           });
         }
         
+        // 파티 초대 (리더가 친구를 초대)
+        if (action === 'invite') {
+          const targetPartyId = partyId || body.partyId;
+          const targetFriendId = body.friendId;
+          if (!targetPartyId || !targetFriendId) {
+            return res.status(400).json({ error: '파티 ID와 친구 ID를 입력해 주세요.' });
+          }
+          // 파티 조회 및 리더 확인
+          const party = await pool.query(
+            `SELECT * FROM parties WHERE id = $1`,
+            [targetPartyId]
+          );
+          if (party.rows.length === 0) {
+            return res.status(404).json({ error: '파티를 찾을 수 없어요.' });
+          }
+          if (party.rows[0].leader_id !== req.userId) {
+            return res.status(403).json({ error: '파티 리더만 친구를 초대할 수 있어요.' });
+          }
+          // 이미 파티에 속해있는지 확인
+          const existingMember = await pool.query(
+            `SELECT * FROM parties WHERE id = $1 AND ($2 = ANY(member_ids) OR leader_id = $2)`,
+            [targetPartyId, targetFriendId]
+          );
+          if (existingMember.rows.length > 0) {
+            return res.status(400).json({ error: '이미 파티에 속해있는 친구예요.' });
+          }
+          const currentMemberIds = party.rows[0].member_ids || [];
+          if (currentMemberIds.length >= 4) {
+            return res.status(400).json({ error: '파티가 가득 찼어요. (최대 4명)' });
+          }
+          // 친구 관계 확인
+          const friendCheck = await pool.query(
+            `SELECT * FROM friends 
+             WHERE ((user_id = $1 AND friend_id = $2) OR (user_id = $2 AND friend_id = $1)) 
+             AND status = 'accepted'`,
+            [req.userId, targetFriendId]
+          );
+          if (friendCheck.rows.length === 0) {
+            return res.status(403).json({ error: '친구에게만 초대할 수 있어요.' });
+          }
+          // 멤버 추가
+          const updated = await pool.query(
+            `UPDATE parties SET member_ids = array_append(member_ids, $1), updated_at = CURRENT_TIMESTAMP 
+             WHERE id = $2 RETURNING *`,
+            [targetFriendId, targetPartyId]
+          );
+          return res.json({ 
+            success: true,
+            message: '친구를 파티에 초대했어요.',
+            party: updated.rows[0]
+          });
+        }
+        
         // 파티 나가기
         if (action === 'leave') {
           // 내가 속한 파티 찾기

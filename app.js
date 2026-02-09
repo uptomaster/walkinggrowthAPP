@@ -1506,6 +1506,7 @@
       btn.textContent = userProfile.nickname;
       btn.classList.add('logged-in');
       btn.setAttribute('aria-label', '프로필');
+      btn.style.cursor = 'pointer';
       if (logoutBtn) {
         logoutBtn.style.display = 'block';
       }
@@ -1513,6 +1514,7 @@
       btn.textContent = '🔐 로그인';
       btn.classList.remove('logged-in');
       btn.setAttribute('aria-label', '로그인');
+      btn.style.cursor = 'pointer';
       if (logoutBtn) {
         logoutBtn.style.display = 'none';
       }
@@ -3079,8 +3081,8 @@
     var btnHeaderAuth = document.getElementById('btnHeaderAuth');
     if (btnHeaderAuth) btnHeaderAuth.addEventListener('click', function() {
       if (isLoggedIn) {
-        // 로그인 상태일 때는 프로필 표시 (또는 아무 동작 안 함)
-        // 로그아웃은 별도 버튼으로 처리
+        // 로그인 상태일 때는 프로필 표시
+        openProfileModal();
       } else {
         openAuthModal();
       }
@@ -3194,6 +3196,13 @@
       if (confirm('파티에서 나가시겠어요?')) {
         leaveParty();
       }
+    });
+    // 프로필 모달 이벤트 리스너
+    var profileClose = document.getElementById('profileClose');
+    if (profileClose) profileClose.addEventListener('click', closeProfileModal);
+    var profileOverlay = document.getElementById('profileOverlay');
+    if (profileOverlay) profileOverlay.addEventListener('click', function(e) {
+      if (e.target === profileOverlay) closeProfileModal();
     });
   }
 
@@ -3394,6 +3403,7 @@
         showToast(data.error);
         return;
       }
+      console.log('Friends data:', data); // 디버깅용
       renderFriendRequests(data.receivedRequests || []);
       renderFriendsList(data.friends || []);
     })
@@ -3443,7 +3453,7 @@
     container.innerHTML = friends.map(function(friend) {
       return '<div class="friend-item">' +
         '<div class="friend-info">' +
-        '<div class="friend-name">' + escapeHtml(friend.nickname) + '</div>' +
+        '<div class="friend-name" style="cursor:pointer;" data-friend-id="' + friend.friend_id + '" data-friend-name="' + escapeHtml(friend.nickname) + '">' + escapeHtml(friend.nickname) + '</div>' +
         '<div class="friend-status">친구</div>' +
         '</div>' +
         '<div class="friend-actions">' +
@@ -3451,6 +3461,15 @@
         '</div>' +
         '</div>';
     }).join('');
+    
+    // 닉네임 클릭 시 프로필 표시
+    container.querySelectorAll('.friend-name[data-friend-id]').forEach(function(nameEl) {
+      nameEl.addEventListener('click', function() {
+        var friendId = parseInt(nameEl.getAttribute('data-friend-id'));
+        var friendName = nameEl.getAttribute('data-friend-name');
+        openFriendProfile(friendId, friendName);
+      });
+    });
     // 채팅 버튼 이벤트
     container.querySelectorAll('.btn-friend-chat[data-friend-id]').forEach(function(btn) {
       btn.addEventListener('click', function() {
@@ -3659,6 +3678,7 @@
       currentParty = data.party;
       renderPartyInfo(data.party);
       renderPartyMembers(data.party ? data.party.members : []);
+      renderPartyInviteFriends();
     })
     .catch(function(err) {
       console.error('Party me error:', err);
@@ -3692,6 +3712,10 @@
       '</div>';
     if (btnCreate) btnCreate.style.display = 'none';
     if (btnLeave) btnLeave.style.display = 'block';
+    // 리더인 경우 초대 섹션 표시
+    if (isLeader) {
+      renderPartyInviteFriends();
+    }
   }
 
   // 파티 멤버 렌더링
@@ -3713,11 +3737,20 @@
       var isMe = member.id === me;
       return '<div class="party-member' + (isLeader ? ' party-member-leader' : '') + '">' +
         '<div class="party-member-info">' +
-        '<div class="party-member-name">' + escapeHtml(member.nickname) + (isMe ? ' <span style="color:var(--text-muted);font-weight:400;">(나)</span>' : '') + '</div>' +
+        '<div class="party-member-name" style="cursor:pointer;" data-member-id="' + member.id + '" data-member-nickname="' + escapeHtml(member.nickname) + '">' + escapeHtml(member.nickname) + (isMe ? ' <span style="color:var(--text-muted);font-weight:400;">(나)</span>' : '') + '</div>' +
         (isLeader ? '<div class="party-member-role">리더</div>' : '') +
         '</div>' +
         '</div>';
     }).join('');
+    
+    // 닉네임 클릭 시 프로필 표시
+    container.querySelectorAll('.party-member-name[data-member-id]').forEach(function(nameEl) {
+      nameEl.addEventListener('click', function() {
+        var memberId = parseInt(nameEl.getAttribute('data-member-id'));
+        var memberNickname = nameEl.getAttribute('data-member-nickname');
+        openFriendProfile(memberId, memberNickname);
+      });
+    });
   }
 
   // 파티 생성
@@ -3791,6 +3824,225 @@
     });
     var target = document.getElementById('social-' + tabId);
     if (target) target.style.display = 'block';
+  }
+
+  // 프로필 모달 열기
+  function openProfileModal() {
+    var overlay = document.getElementById('profileOverlay');
+    var modal = document.getElementById('profileModal');
+    if (!overlay || !modal) return;
+    
+    // 프로필 정보 렌더링
+    renderProfile();
+    
+    overlay.style.display = 'flex';
+    setTimeout(function() {
+      overlay.classList.remove('fade-out');
+    }, 10);
+  }
+
+  // 프로필 모달 닫기
+  function closeProfileModal() {
+    var overlay = document.getElementById('profileOverlay');
+    if (!overlay) return;
+    overlay.classList.add('fade-out');
+    setTimeout(function() {
+      overlay.style.display = 'none';
+    }, 300);
+  }
+
+  // 프로필 정보 렌더링 (자신의 프로필)
+  function renderProfile() {
+    renderProfileData(null, null);
+  }
+
+  // 친구 프로필 열기
+  function openFriendProfile(friendId, friendNickname) {
+    renderProfileData(friendId, friendNickname);
+    openProfileModal();
+  }
+
+  // 프로필 데이터 렌더링 (자신 또는 친구)
+  function renderProfileData(friendId, friendNickname) {
+    var nicknameEl = document.getElementById('profileNickname');
+    var levelEl = document.getElementById('profileLevel');
+    var stepsEl = document.getElementById('profileSteps');
+    var distanceEl = document.getElementById('profileDistance');
+    var goldEl = document.getElementById('profileGold');
+    var animalsEl = document.getElementById('profileAnimals');
+    var achievementsEl = document.getElementById('profileAchievements');
+    var equipmentEl = document.getElementById('profileEquipment');
+    
+    if (friendId) {
+      // 친구 프로필 조회
+      var token = getAuthToken();
+      fetch(API_BASE + '/api/user/profile?userId=' + friendId, {
+        headers: { 'Authorization': 'Bearer ' + token }
+      })
+      .then(function(res) { return res.json(); })
+      .then(function(data) {
+        if (data.error) {
+          showToast(data.error);
+          return;
+        }
+        if (nicknameEl) nicknameEl.textContent = friendNickname || data.nickname || '알 수 없음';
+        if (levelEl) {
+          var friendXp = data.totalXp || 0;
+          var levelInfo = xpToLevel(friendXp);
+          levelEl.textContent = 'Lv.' + levelInfo.level + ' · ' + levelInfo.xp + ' XP';
+        }
+        if (stepsEl) stepsEl.textContent = (data.lifetimeSteps || 0).toLocaleString();
+        if (distanceEl) distanceEl.textContent = ((data.totalWalkDistanceKm || 0).toFixed(2)) + ' km';
+        if (goldEl) goldEl.textContent = (data.gold || 0).toLocaleString() + ' G';
+        if (animalsEl) animalsEl.textContent = (data.capturedAnimals ? data.capturedAnimals.length : 0) + '마리';
+        
+        // 업적 표시 (친구의 경우 제한적으로 표시)
+        if (achievementsEl) {
+          achievementsEl.textContent = '친구의 상세 정보는 제한적으로 표시됩니다.';
+        }
+        
+        // 보유 장비 표시 (친구의 경우 제한적으로 표시)
+        if (equipmentEl) {
+          equipmentEl.textContent = '친구의 상세 정보는 제한적으로 표시됩니다.';
+        }
+      })
+      .catch(function(err) {
+        console.error('Friend profile error:', err);
+        showToast('프로필 정보를 불러올 수 없어요.');
+      });
+    } else {
+      // 자신의 프로필
+      if (nicknameEl) nicknameEl.textContent = userProfile ? userProfile.nickname : avatar.name || '산책러';
+      if (levelEl) {
+        var levelInfo = xpToLevel(totalXp);
+        levelEl.textContent = 'Lv.' + levelInfo.level + ' · ' + levelInfo.xp + ' XP';
+      }
+      if (stepsEl) stepsEl.textContent = lifetimeSteps.toLocaleString();
+      if (distanceEl) distanceEl.textContent = totalWalkDistanceKm.toFixed(2) + ' km';
+      if (goldEl) goldEl.textContent = gold.toLocaleString() + ' G';
+      if (animalsEl) animalsEl.textContent = capturedAnimals.length + '마리';
+      
+      // 업적 표시
+      if (achievementsEl) {
+        var completedAchievements = ACHIEVEMENTS.filter(function(a) { return a.check(); });
+        if (completedAchievements.length === 0) {
+          achievementsEl.textContent = '아직 달성한 업적이 없어요.';
+        } else {
+          achievementsEl.innerHTML = completedAchievements.map(function(a) {
+            return '<span style="margin-right:0.5rem;">' + a.icon + ' ' + a.name + '</span>';
+          }).join('');
+        }
+      }
+      
+      // 보유 장비 표시
+      if (equipmentEl) {
+        var equipCount = inventory.filter(function(i) { return i.type !== 'kit'; }).length;
+        equipmentEl.textContent = equipCount + '개';
+      }
+    }
+  }
+
+  // 파티 초대 친구 목록 렌더링
+  function renderPartyInviteFriends() {
+    var container = document.getElementById('partyInviteFriends');
+    var section = document.getElementById('partyInviteSection');
+    if (!container || !section) return;
+    
+    if (!currentParty) {
+      section.style.display = 'none';
+      return;
+    }
+    
+    var token = getAuthToken();
+    var me = null;
+    try {
+      var payload = JSON.parse(atob(token.split('.')[1]));
+      me = payload.userId;
+    } catch (e) {}
+    
+    var isLeader = currentParty && currentParty.leaderId === me;
+    if (!isLeader) {
+      section.style.display = 'none';
+      return;
+    }
+    
+    // 현재 파티 멤버 ID 목록
+    var partyMemberIds = currentParty.members ? currentParty.members.map(function(m) { return m.id; }) : [];
+    partyMemberIds.push(currentParty.leaderId);
+    
+    // 친구 목록 가져오기
+    fetch(API_BASE + '/api/friends', {
+      headers: { 'Authorization': 'Bearer ' + token }
+    })
+    .then(function(res) { return res.json(); })
+    .then(function(data) {
+      if (data.error) {
+        section.style.display = 'none';
+        return;
+      }
+      // 파티에 없는 친구만 필터링
+      var availableFriends = (data.friends || []).filter(function(friend) {
+        return !partyMemberIds.includes(friend.friend_id);
+      });
+      
+      if (availableFriends.length === 0) {
+        container.innerHTML = '<div class="empty-state" style="padding:1rem;">초대할 친구가 없어요.</div>';
+      } else {
+        container.innerHTML = availableFriends.map(function(friend) {
+          return '<div class="friend-item" style="margin-bottom:0.5rem;">' +
+            '<div class="friend-info">' +
+            '<div class="friend-name">' + escapeHtml(friend.nickname) + '</div>' +
+            '</div>' +
+            '<div class="friend-actions">' +
+            '<button type="button" class="btn-friend-action btn-friend-accept" data-invite-friend-id="' + friend.friend_id + '">초대</button>' +
+            '</div>' +
+            '</div>';
+        }).join('');
+        
+        // 초대 버튼 이벤트
+        container.querySelectorAll('.btn-friend-action[data-invite-friend-id]').forEach(function(btn) {
+          btn.addEventListener('click', function() {
+            inviteToParty(parseInt(btn.getAttribute('data-invite-friend-id')));
+          });
+        });
+      }
+      section.style.display = 'block';
+    })
+    .catch(function(err) {
+      console.error('Party invite friends error:', err);
+      section.style.display = 'none';
+    });
+  }
+
+  // 파티 초대
+  function inviteToParty(friendId) {
+    var token = getAuthToken();
+    if (!token || !currentParty) {
+      showToast('파티 정보를 불러올 수 없어요.');
+      return;
+    }
+    fetch(API_BASE + '/api/party', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'Authorization': 'Bearer ' + token
+      },
+      body: JSON.stringify({ action: 'invite', partyId: currentParty.id, friendId: friendId })
+    })
+    .then(function(res) { return res.json(); })
+    .then(function(data) {
+      if (data.error) {
+        showToast(data.error);
+        return;
+      }
+      showToast('친구를 파티에 초대했어요!');
+      renderParty();
+      renderPartyInviteFriends();
+    })
+    .catch(function(err) {
+      console.error('Party invite error:', err);
+      showToast('파티 초대 중 오류가 발생했어요.');
+    });
   }
 
   // HTML 이스케이프
