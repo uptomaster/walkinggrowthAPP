@@ -3876,7 +3876,7 @@
     if (friendId) {
       // 친구 프로필 조회
       var token = getAuthToken();
-      fetch(API_BASE + '/api/user/profile?userId=' + friendId, {
+      fetch(API_BASE + '/api/user/data?action=profile&userId=' + friendId, {
         headers: { 'Authorization': 'Bearer ' + token }
       })
       .then(function(res) { return res.json(); })

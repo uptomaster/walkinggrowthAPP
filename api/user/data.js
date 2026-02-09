@@ -1,5 +1,5 @@
 const jwt = require('jsonwebtoken');
-const { getUserData, setUserData } = require('../../server/db');
+const { getUserData, setUserData, pool } = require('../../server/db');
 
 const JWT_SECRET = process.env.JWT_SECRET || 'change-me-in-production';
 
@@ -23,6 +23,61 @@ module.exports = async (req, res) => {
   if (req.method === 'GET') {
     return authMiddleware(req, res, async function() {
       try {
+        // 프로필 조회 액션
+        if (req.query.action === 'profile') {
+          const targetUserId = req.query.userId ? parseInt(req.query.userId, 10) : req.userId;
+          
+          if (isNaN(targetUserId)) {
+            return res.status(400).json({ error: '올바른 사용자 ID를 입력해 주세요.' });
+          }
+
+          // 사용자 정보 조회
+          const userResult = await pool.query(
+            `SELECT id, nickname, created_at FROM users WHERE id = $1`,
+            [targetUserId]
+          );
+
+          if (userResult.rows.length === 0) {
+            return res.status(404).json({ error: '사용자를 찾을 수 없어요.' });
+          }
+
+          const user = userResult.rows[0];
+
+          // 사용자 데이터 조회
+          const dataResult = await pool.query(
+            `SELECT data FROM user_data WHERE user_id = $1`,
+            [targetUserId]
+          );
+
+          let profileData = {
+            nickname: user.nickname,
+            totalXp: 0,
+            lifetimeSteps: 0,
+            totalWalkDistanceKm: 0,
+            gold: 0,
+            capturedAnimals: []
+          };
+
+          if (dataResult.rows.length > 0 && dataResult.rows[0].data) {
+            try {
+              const userData = typeof dataResult.rows[0].data === 'string' 
+                ? JSON.parse(dataResult.rows[0].data) 
+                : dataResult.rows[0].data;
+              
+              profileData.totalXp = userData.totalXp || 0;
+              profileData.lifetimeSteps = userData.lifetimeSteps || 0;
+              profileData.totalWalkDistanceKm = userData.totalWalkDistanceKm || 0;
+              profileData.gold = userData.gold || 0;
+              profileData.capturedAnimals = userData.capturedAnimals || [];
+            } catch (e) {
+              console.error('Error parsing user data:', e);
+            }
+          }
+
+          return res.json(profileData);
+        }
+        
+        // 기본 데이터 조회
         const row = await getUserData(req.userId);
         if (!row || row.data_json == null) {
           return res.json({ data: null });
