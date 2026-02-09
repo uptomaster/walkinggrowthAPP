@@ -466,6 +466,21 @@
       <div style="color: var(--text-muted); font-size: 0.9rem;">로그인 중...</div>
     </div>
 
+    <!-- 모바일 닉네임 입력 모달 -->
+    <div class="auth-overlay" id="mobileNicknameOverlay" style="display: none;">
+      <div class="auth-modal" style="max-width: 400px;">
+        <h2 class="auth-title">WalkStory 시작하기</h2>
+        <p style="color: var(--text-muted); font-size: 0.9rem; margin-bottom: 1.5rem; text-align: center;">
+          닉네임을 입력해 주세요.<br/>자동으로 계정이 생성됩니다.
+        </p>
+        <div class="auth-panel">
+          <label>닉네임</label>
+          <input type="text" id="mobileNicknameInput" placeholder="2~12자" maxlength="12" inputmode="text" autocomplete="username" style="width: 100%; padding: 0.75rem; border: 1px solid var(--border); border-radius: var(--radius); background: var(--bg); color: var(--text); font-size: 1rem;" />
+          <button type="button" class="btn-auth-submit" id="btnMobileNicknameSubmit" style="width: 100%; margin-top: 1rem;">시작하기</button>
+        </div>
+      </div>
+    </div>
+
     <div class="auth-overlay auth-gate" id="authOverlay" role="dialog" aria-modal="true" aria-labelledby="authTitle">
       <div class="auth-modal">
         <div class="auth-tabs">

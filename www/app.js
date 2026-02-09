@@ -1543,6 +1543,27 @@
     var btn = document.getElementById('btnHeaderAuth');
     var logoutBtn = document.getElementById('btnLogout');
     if (!btn) return;
+
+    // 모바일 앱에서는 로그인 상태에 따라 표시
+    if (isMobileApp) {
+      if (isLoggedIn && userProfile && userProfile.nickname) {
+        btn.textContent = userProfile.nickname;
+        btn.classList.add('logged-in');
+        btn.setAttribute('aria-label', '프로필');
+        btn.style.cursor = 'pointer';
+        btn.style.display = 'block';
+        if (logoutBtn) logoutBtn.style.display = 'block';
+      } else {
+        btn.textContent = '🔐 로그인';
+        btn.classList.remove('logged-in');
+        btn.setAttribute('aria-label', '로그인');
+        btn.style.cursor = 'pointer';
+        btn.style.display = 'block';
+        if (logoutBtn) logoutBtn.style.display = 'none';
+      }
+      renderAuthGate();
+      return;
+    }
     if (isLoggedIn && userProfile && userProfile.nickname) {
       btn.textContent = userProfile.nickname;
       btn.classList.add('logged-in');
@@ -1567,6 +1588,21 @@
     var authOverlay = document.getElementById('authOverlay');
     var btnCodex = document.getElementById('btnCodex');
     if (!appMain || !authOverlay) return;
+
+    // 모바일 앱에서는 로그인 여부 확인 후 처리
+    if (isMobileApp) {
+      if (isLoggedIn) {
+        appMain.classList.remove('hidden');
+        authOverlay.style.display = 'none';
+        authOverlay.classList.remove('auth-gate');
+        if (btnCodex) btnCodex.style.display = 'block';
+      } else {
+        // 모바일 앱에서 로그인 안 된 경우 닉네임 입력 모달 표시
+        showMobileNicknameModal();
+      }
+      return;
+    }
+
     if (isLoggedIn) {
       appMain.classList.remove('hidden');
       authOverlay.style.display = 'none';
@@ -1580,12 +1616,168 @@
     }
   }
   function openAuthModal() {
+    // 모바일 앱에서는 닉네임 입력 모달 표시
+    if (isMobileApp) {
+      showMobileNicknameModal();
+      return;
+    }
+
     var overlay = document.getElementById('authOverlay');
     if (overlay) { overlay.style.display = 'flex'; overlay.classList.remove('auth-gate'); }
     document.getElementById('authLoginPanel').style.display = 'block';
     document.getElementById('authSignupPanel').style.display = 'none';
     document.querySelectorAll('.auth-tab').forEach(function(t){ t.classList.remove('active'); if (t.getAttribute('data-auth-tab') === 'login') t.classList.add('active'); });
     document.getElementById('authTitle').textContent = '로그인';
+  }
+
+  // 모바일 앱용 닉네임 입력 모달 표시
+  function showMobileNicknameModal() {
+    var overlay = document.getElementById('mobileNicknameOverlay');
+    if (!overlay) return;
+    overlay.style.display = 'flex';
+    var input = document.getElementById('mobileNicknameInput');
+    if (input) {
+      input.value = '';
+      setTimeout(function() { input.focus(); }, 100);
+    }
+  }
+
+  // 모바일 앱용 닉네임 입력 모달 숨기기
+  function hideMobileNicknameModal() {
+    var overlay = document.getElementById('mobileNicknameOverlay');
+    if (overlay) overlay.style.display = 'none';
+  }
+
+  // 모바일 앱에서 닉네임으로 자동 회원가입/로그인
+  function doMobileAutoLogin() {
+    var nick = (document.getElementById('mobileNicknameInput') || {}).value.trim();
+    if (!nick || nick.length < 2) {
+      showToast('닉네임은 2자 이상이에요.');
+      return;
+    }
+    if (nick.length > 12) {
+      showToast('닉네임은 12자 이하여요.');
+      return;
+    }
+
+    showAuthLoading();
+    
+    // 모바일 앱에서는 디바이스 고유 ID를 비밀번호로 사용 (간단한 해시)
+    var deviceId = 'mobile_' + (localStorage.getItem('walk_device_id') || Math.random().toString(36).substring(2, 15) + Date.now().toString(36));
+    localStorage.setItem('walk_device_id', deviceId);
+    var password = deviceId.substring(0, 20); // 최대 20자
+
+    // 먼저 회원가입 시도
+    var signupUrl = API_BASE + '/api/auth/signup';
+    console.log('Mobile auto signup attempt:', { nickname: nick, url: signupUrl });
+    
+    fetch(signupUrl, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ 
+        nickname: nick, 
+        password: password,
+        email: 'mobile_' + Date.now() + '@walkstory.local' // 더미 이메일
+      })
+    })
+    .then(function(r) {
+      console.log('Mobile signup response:', r.status);
+      if (r.ok) {
+        return r.json().then(function(j) {
+          console.log('Mobile signup success');
+          return { ok: true, body: j, isSignup: true };
+        });
+      } else {
+        // 회원가입 실패 시 로그인 시도
+        return r.text().then(function(text) {
+          console.log('Mobile signup failed, trying login:', text);
+          return doMobileLogin(nick, password);
+        });
+      }
+    })
+    .then(function(x) {
+      if (!x || !x.ok) {
+        hideAuthLoading();
+        var errorMsg = x && x.body && x.body.error ? x.body.error : '로그인에 실패했어요.';
+        showToast(errorMsg);
+        return;
+      }
+      
+      // 성공 시 토큰 저장 및 사용자 정보 설정
+      setAuthToken(x.body.token);
+      userProfile = x.body.user;
+      isLoggedIn = true;
+      
+      // 사용자 데이터 로드
+      return fetch(API_BASE + '/api/user/data', { 
+        headers: { 'Authorization': 'Bearer ' + x.body.token } 
+      });
+    })
+    .then(function(r) {
+      if (!r) return;
+      if (!r.ok) {
+        console.warn('User data fetch failed:', r.status);
+        return null;
+      }
+      return r.json();
+    })
+    .then(function(body) {
+      hideAuthLoading();
+      if (body && body.data) {
+        try {
+          var data = typeof body.data === 'string' ? JSON.parse(body.data) : body.data;
+          applyGameState(data);
+          renderPet();
+        } catch (e) {
+          console.error('Failed to parse user data:', e);
+        }
+      }
+      saveAll();
+      hideMobileNicknameModal();
+      setTimeout(function() {
+        renderHeaderAuth();
+        renderAuthGate();
+        renderPet();
+        renderAttendance();
+        if (userProfile && userProfile.nickname) {
+          showWelcomeModal(userProfile.nickname);
+        }
+      }, 300);
+    })
+    .catch(function(err) {
+      hideAuthLoading();
+      console.error('Mobile auto login error:', err);
+      showToast('로그인 중 오류가 발생했어요. 다시 시도해 주세요.');
+    });
+  }
+
+  // 모바일 앱에서 로그인 시도
+  function doMobileLogin(nickname, password) {
+    var loginUrl = API_BASE + '/api/auth/login';
+    console.log('Mobile login attempt:', { nickname: nickname, url: loginUrl });
+    
+    return fetch(loginUrl, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ nickname: nickname, password: password })
+    })
+    .then(function(r) {
+      console.log('Mobile login response:', r.status);
+      if (!r.ok) {
+        return r.text().then(function(text) {
+          try {
+            var errorBody = JSON.parse(text);
+            return { ok: false, body: errorBody };
+          } catch {
+            return { ok: false, body: { error: '로그인 실패' } };
+          }
+        });
+      }
+      return r.json().then(function(j) {
+        console.log('Mobile login success');
+        return { ok: true, body: j, isSignup: false };
+      });
+    });
   }
   function closeAuthModal() {
     var overlay = document.getElementById('authOverlay');
@@ -3307,6 +3499,20 @@
         openAuthModal();
       }
     });
+    
+    // 모바일 닉네임 입력 모달 이벤트
+    var btnMobileNicknameSubmit = document.getElementById('btnMobileNicknameSubmit');
+    if (btnMobileNicknameSubmit) {
+      btnMobileNicknameSubmit.addEventListener('click', doMobileAutoLogin);
+    }
+    var mobileNicknameInput = document.getElementById('mobileNicknameInput');
+    if (mobileNicknameInput) {
+      mobileNicknameInput.addEventListener('keypress', function(e) {
+        if (e.key === 'Enter') {
+          doMobileAutoLogin();
+        }
+      });
+    }
     var btnLogout = document.getElementById('btnLogout');
     if (btnLogout) btnLogout.addEventListener('click', function() {
       if (confirm('로그아웃할까요?')) {

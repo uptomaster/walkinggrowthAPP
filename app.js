@@ -1543,6 +1543,27 @@
     var btn = document.getElementById('btnHeaderAuth');
     var logoutBtn = document.getElementById('btnLogout');
     if (!btn) return;
+
+    // 모바일 앱에서는 로그인 상태에 따라 표시
+    if (isMobileApp) {
+      if (isLoggedIn && userProfile && userProfile.nickname) {
+        btn.textContent = userProfile.nickname;
+        btn.classList.add('logged-in');
+        btn.setAttribute('aria-label', '프로필');
+        btn.style.cursor = 'pointer';
+        btn.style.display = 'block';
+        if (logoutBtn) logoutBtn.style.display = 'block';
+      } else {
+        btn.textContent = '🔐 로그인';
+        btn.classList.remove('logged-in');
+        btn.setAttribute('aria-label', '로그인');
+        btn.style.cursor = 'pointer';
+        btn.style.display = 'block';
+        if (logoutBtn) logoutBtn.style.display = 'none';
+      }
+      renderAuthGate();
+      return;
+    }
     if (isLoggedIn && userProfile && userProfile.nickname) {
       btn.textContent = userProfile.nickname;
       btn.classList.add('logged-in');
@@ -1567,6 +1588,21 @@
     var authOverlay = document.getElementById('authOverlay');
     var btnCodex = document.getElementById('btnCodex');
     if (!appMain || !authOverlay) return;
+
+    // 모바일 앱에서는 로그인 여부 확인 후 처리
+    if (isMobileApp) {
+      if (isLoggedIn) {
+        appMain.classList.remove('hidden');
+        authOverlay.style.display = 'none';
+        authOverlay.classList.remove('auth-gate');
+        if (btnCodex) btnCodex.style.display = 'block';
+      } else {
+        // 모바일 앱에서 로그인 안 된 경우 닉네임 입력 모달 표시
+        showMobileNicknameModal();
+      }
+      return;
+    }
+
     if (isLoggedIn) {
       appMain.classList.remove('hidden');
       authOverlay.style.display = 'none';
@@ -1580,12 +1616,221 @@
     }
   }
   function openAuthModal() {
+    // 모바일 앱에서는 닉네임 입력 모달 표시
+    if (isMobileApp) {
+      showMobileNicknameModal();
+      return;
+    }
+
     var overlay = document.getElementById('authOverlay');
     if (overlay) { overlay.style.display = 'flex'; overlay.classList.remove('auth-gate'); }
     document.getElementById('authLoginPanel').style.display = 'block';
     document.getElementById('authSignupPanel').style.display = 'none';
     document.querySelectorAll('.auth-tab').forEach(function(t){ t.classList.remove('active'); if (t.getAttribute('data-auth-tab') === 'login') t.classList.add('active'); });
     document.getElementById('authTitle').textContent = '로그인';
+  }
+
+  // 모바일 앱용 닉네임 입력 모달 표시
+  function showMobileNicknameModal() {
+    var overlay = document.getElementById('mobileNicknameOverlay');
+    if (!overlay) return;
+    overlay.style.display = 'flex';
+    var input = document.getElementById('mobileNicknameInput');
+    if (input) {
+      input.value = '';
+      setTimeout(function() { input.focus(); }, 100);
+    }
+  }
+
+  // 모바일 앱용 닉네임 입력 모달 숨기기
+  function hideMobileNicknameModal() {
+    var overlay = document.getElementById('mobileNicknameOverlay');
+    if (overlay) overlay.style.display = 'none';
+  }
+
+  // 모바일 앱에서 닉네임으로 자동 회원가입/로그인
+  function doMobileAutoLogin() {
+    var nick = (document.getElementById('mobileNicknameInput') || {}).value.trim();
+    if (!nick || nick.length < 2) {
+      showToast('닉네임은 2자 이상이에요.');
+      return;
+    }
+    if (nick.length > 12) {
+      showToast('닉네임은 12자 이하여요.');
+      return;
+    }
+
+    // 네트워크 연결 확인
+    if (!navigator.onLine) {
+      showToast('인터넷 연결을 확인해 주세요.');
+      return;
+    }
+
+    showAuthLoading();
+    
+    // 모바일 앱에서는 디바이스 고유 ID를 비밀번호로 사용 (간단한 해시)
+    var deviceId = 'mobile_' + (localStorage.getItem('walk_device_id') || Math.random().toString(36).substring(2, 15) + Date.now().toString(36));
+    localStorage.setItem('walk_device_id', deviceId);
+    var password = deviceId.substring(0, 20); // 최대 20자
+
+    // 먼저 회원가입 시도
+    var signupUrl = API_BASE + '/api/auth/signup';
+    console.log('Mobile auto signup attempt:', { nickname: nick, url: signupUrl, API_BASE: API_BASE });
+    
+    var timeoutPromise = new Promise(function(_, reject) {
+      setTimeout(function() {
+        reject(new Error('요청 시간 초과 (30초)'));
+      }, 30000);
+    });
+    
+    Promise.race([
+      fetch(signupUrl, {
+        method: 'POST',
+        headers: { 
+          'Content-Type': 'application/json',
+          'Accept': 'application/json'
+        },
+        mode: 'cors',
+        credentials: 'omit',
+        body: JSON.stringify({ 
+          nickname: nick, 
+          password: password,
+          email: 'mobile_' + Date.now() + '@walkstory.local' // 더미 이메일
+        })
+      }),
+      timeoutPromise
+    ])
+    .then(function(r) {
+      console.log('Mobile signup response:', r.status, r.statusText);
+      if (r.ok) {
+        return r.json().then(function(j) {
+          console.log('Mobile signup success');
+          return { ok: true, body: j, isSignup: true };
+        });
+      } else {
+        // 회원가입 실패 시 로그인 시도
+        return r.text().then(function(text) {
+          console.log('Mobile signup failed, trying login:', text);
+          return doMobileLogin(nick, password);
+        });
+      }
+    })
+    .catch(function(err) {
+      console.error('Mobile signup fetch error:', err);
+      // 네트워크 오류인 경우에도 로그인 시도
+      if (err.message && (err.message.includes('Failed to fetch') || err.message.includes('NetworkError'))) {
+        console.log('Network error, trying login anyway');
+        return doMobileLogin(nick, password);
+      }
+      throw err;
+    })
+    .then(function(x) {
+      if (!x || !x.ok) {
+        hideAuthLoading();
+        var errorMsg = x && x.body && x.body.error ? x.body.error : '로그인에 실패했어요.';
+        showToast(errorMsg);
+        return;
+      }
+      
+      // 성공 시 토큰 저장 및 사용자 정보 설정
+      setAuthToken(x.body.token);
+      userProfile = x.body.user;
+      isLoggedIn = true;
+      
+      // 사용자 데이터 로드
+      return fetch(API_BASE + '/api/user/data', { 
+        headers: { 'Authorization': 'Bearer ' + x.body.token } 
+      });
+    })
+    .then(function(r) {
+      if (!r) return;
+      if (!r.ok) {
+        console.warn('User data fetch failed:', r.status);
+        return null;
+      }
+      return r.json();
+    })
+    .then(function(body) {
+      hideAuthLoading();
+      if (body && body.data) {
+        try {
+          var data = typeof body.data === 'string' ? JSON.parse(body.data) : body.data;
+          applyGameState(data);
+          renderPet();
+        } catch (e) {
+          console.error('Failed to parse user data:', e);
+        }
+      }
+      saveAll();
+      hideMobileNicknameModal();
+      setTimeout(function() {
+        renderHeaderAuth();
+        renderAuthGate();
+        renderPet();
+        renderAttendance();
+        if (userProfile && userProfile.nickname) {
+          showWelcomeModal(userProfile.nickname);
+        }
+      }, 300);
+    })
+    .catch(function(err) {
+      hideAuthLoading();
+      console.error('Mobile auto login error:', err);
+      var errorMsg = '로그인 중 오류가 발생했어요.';
+      if (err.message) {
+        if (err.message.includes('Failed to fetch') || err.message.includes('NetworkError')) {
+          errorMsg = '네트워크 연결을 확인해 주세요. (' + API_BASE + ')';
+        } else if (err.message.includes('시간 초과')) {
+          errorMsg = '서버 응답 시간이 초과되었어요. 다시 시도해 주세요.';
+        } else {
+          errorMsg = err.message;
+        }
+      }
+      showToast(errorMsg);
+    });
+  }
+
+  // 모바일 앱에서 로그인 시도
+  function doMobileLogin(nickname, password) {
+    var loginUrl = API_BASE + '/api/auth/login';
+    console.log('Mobile login attempt:', { nickname: nickname, url: loginUrl, API_BASE: API_BASE });
+    
+    var timeoutPromise = new Promise(function(_, reject) {
+      setTimeout(function() {
+        reject(new Error('요청 시간 초과 (30초)'));
+      }, 30000);
+    });
+    
+    return Promise.race([
+      fetch(loginUrl, {
+        method: 'POST',
+        headers: { 
+          'Content-Type': 'application/json',
+          'Accept': 'application/json'
+        },
+        mode: 'cors',
+        credentials: 'omit',
+        body: JSON.stringify({ nickname: nickname, password: password })
+      }),
+      timeoutPromise
+    ])
+    .then(function(r) {
+      console.log('Mobile login response:', r.status);
+      if (!r.ok) {
+        return r.text().then(function(text) {
+          try {
+            var errorBody = JSON.parse(text);
+            return { ok: false, body: errorBody };
+          } catch {
+            return { ok: false, body: { error: '로그인 실패' } };
+          }
+        });
+      }
+      return r.json().then(function(j) {
+        console.log('Mobile login success');
+        return { ok: true, body: j, isSignup: false };
+      });
+    });
   }
   function closeAuthModal() {
     var overlay = document.getElementById('authOverlay');
@@ -1722,12 +1967,29 @@
     }
     
     var url = API_BASE + '/api/auth/login';
-    console.log('Login attempt:', { url: url, API_BASE: API_BASE, location: typeof location !== 'undefined' ? location.href : 'N/A', isCapacitorApp: typeof window !== 'undefined' && window.isCapacitorApp, isMobileApp: isMobileApp });
+    console.log('Login attempt:', { 
+      url: url, 
+      API_BASE: API_BASE, 
+      location: typeof location !== 'undefined' ? location.href : 'N/A', 
+      isCapacitorApp: typeof window !== 'undefined' && window.isCapacitorApp, 
+      isMobileApp: isMobileApp,
+      online: navigator.onLine,
+      userAgent: navigator.userAgent
+    });
+    
+    // 네트워크 연결 확인
+    if (!navigator.onLine) {
+      showToast('인터넷 연결을 확인해 주세요.');
+      return;
+    }
     
     // 모바일 앱에서 네트워크 요청 시 타임아웃 설정
     var fetchOptions = {
       method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
+      headers: { 
+        'Content-Type': 'application/json',
+        'Accept': 'application/json'
+      },
       body: JSON.stringify({ nickname: nick, password: pw }),
       mode: 'cors',
       credentials: 'omit'
@@ -2047,22 +2309,49 @@
         showAuthLoading();
         
         // 서버에서 카카오 OAuth URL 가져오기
-        fetch(API_BASE + '/api/auth/kakao-oauth-start', {
-          method: 'GET',
-          headers: { 'Content-Type': 'application/json' },
-        })
+        console.log('카카오 OAuth 시작 요청:', API_BASE + '/api/auth/kakao-oauth-start');
+        
+        var timeoutPromise = new Promise(function(_, reject) {
+          setTimeout(function() {
+            reject(new Error('요청 시간 초과 (30초)'));
+          }, 30000);
+        });
+        
+        Promise.race([
+          fetch(API_BASE + '/api/auth/kakao-oauth-start', {
+            method: 'GET',
+            headers: { 
+              'Content-Type': 'application/json',
+              'Accept': 'application/json'
+            },
+            mode: 'cors',
+            credentials: 'omit'
+          }),
+          timeoutPromise
+        ])
         .then(function(r) {
+          console.log('카카오 OAuth 응답 상태:', r.status, r.statusText);
           if (!r.ok) {
-            throw new Error('OAuth 시작 실패');
+            return r.text().then(function(text) {
+              console.error('카카오 OAuth 시작 실패 응답:', text);
+              try {
+                var errorData = JSON.parse(text);
+                throw new Error(errorData.error || 'OAuth 시작 실패: HTTP ' + r.status);
+              } catch {
+                throw new Error('OAuth 시작 실패: HTTP ' + r.status + ' - ' + text.substring(0, 100));
+              }
+            });
           }
           return r.json();
         })
         .then(function(data) {
-          if (!data.authUrl) {
+          if (!data || !data.authUrl) {
+            console.error('카카오 OAuth 응답 데이터 없음:', data);
             throw new Error('OAuth URL을 받을 수 없어요');
           }
           
-          console.log('카카오 OAuth URL:', data.authUrl);
+          console.log('카카오 OAuth URL 받음:', data.authUrl);
+          hideAuthLoading();
           
           // 카카오톡 앱 또는 브라우저로 열기
           console.log('Opening Kakao OAuth URL:', data.authUrl);
@@ -2075,16 +2364,51 @@
             }).catch(function(err) {
               console.error('Failed to open URL with App plugin:', err);
               // 폴백: window.open
-              window.open(data.authUrl, '_system');
+              try {
+                window.open(data.authUrl, '_system');
+              } catch (e) {
+                console.error('window.open also failed:', e);
+                showToast('브라우저를 열 수 없어요. 수동으로 ' + data.authUrl + '을 열어주세요.');
+              }
             });
           } else {
             // window.open 사용 (안드로이드에서는 _system으로 외부 브라우저 열기)
-            window.open(data.authUrl, '_system');
+            try {
+              window.open(data.authUrl, '_system');
+            } catch (e) {
+              console.error('window.open failed:', e);
+              showToast('브라우저를 열 수 없어요. 수동으로 ' + data.authUrl + '을 열어주세요.');
+            }
           }
-          
-          // URL 스킴으로 돌아올 때 처리
-          // 앱이 다시 활성화될 때 URL 확인
-          var handleAppResume = function() {
+        })
+        .catch(function(err) {
+          hideAuthLoading();
+          console.error('카카오 OAuth 시작 오류:', err);
+          var errorMsg = '카카오 로그인 시작에 실패했어요.';
+          if (err.message) {
+            if (err.message.includes('Failed to fetch') || err.message.includes('NetworkError')) {
+              errorMsg = '네트워크 연결을 확인해 주세요. (' + API_BASE + ')';
+            } else if (err.message.includes('시간 초과')) {
+              errorMsg = '서버 응답 시간이 초과되었어요. 다시 시도해 주세요.';
+            } else {
+              errorMsg = err.message;
+            }
+          }
+          showToast(errorMsg);
+        });
+        
+        return;
+      }
+      
+      // 웹 브라우저에서는 JavaScript SDK 사용
+      if (typeof Kakao === 'undefined' || !Kakao.Auth) {
+        showToast('카카오 SDK를 불러올 수 없어요. 페이지를 새로고침해 주세요.');
+        return;
+      }
+      
+      // URL 스킴으로 돌아올 때 처리
+      // 앱이 다시 활성화될 때 URL 확인
+      var handleAppResume = function() {
             console.log('App resumed, checking for OAuth callback');
             // 잠시 후 URL 확인 (앱이 완전히 로드된 후)
             setTimeout(function() {
@@ -3307,6 +3631,20 @@
         openAuthModal();
       }
     });
+    
+    // 모바일 닉네임 입력 모달 이벤트
+    var btnMobileNicknameSubmit = document.getElementById('btnMobileNicknameSubmit');
+    if (btnMobileNicknameSubmit) {
+      btnMobileNicknameSubmit.addEventListener('click', doMobileAutoLogin);
+    }
+    var mobileNicknameInput = document.getElementById('mobileNicknameInput');
+    if (mobileNicknameInput) {
+      mobileNicknameInput.addEventListener('keypress', function(e) {
+        if (e.key === 'Enter') {
+          doMobileAutoLogin();
+        }
+      });
+    }
     var btnLogout = document.getElementById('btnLogout');
     if (btnLogout) btnLogout.addEventListener('click', function() {
       if (confirm('로그아웃할까요?')) {

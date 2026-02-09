@@ -157,11 +157,33 @@ const callback = async (req, res) => {
 
 // Vercel 서버리스 함수: 경로에 따라 start 또는 callback 호출
 module.exports = async (req, res) => {
-  const path = req.url || req.path || '';
-  
-  if (path.includes('callback') || req.query.code) {
-    return callback(req, res);
-  } else {
-    return start(req, res);
+  try {
+    // Vercel rewrites를 통해 들어온 경우 원본 URL 확인
+    const originalUrl = req.headers['x-vercel-original-path'] || req.url || req.path || '';
+    const queryString = req.url ? req.url.split('?')[1] : '';
+    const hasCode = req.query && req.query.code;
+    
+    console.log('Kakao OAuth request:', {
+      url: req.url,
+      path: req.path,
+      originalUrl: originalUrl,
+      query: req.query,
+      headers: {
+        'x-vercel-original-path': req.headers['x-vercel-original-path'],
+        origin: req.headers.origin,
+        host: req.headers.host
+      }
+    });
+    
+    // callback 경로 확인 (여러 방법으로 체크)
+    if (originalUrl.includes('callback') || originalUrl.includes('kakao-oauth-callback') || hasCode) {
+      return callback(req, res);
+    } else {
+      // start 경로
+      return start(req, res);
+    }
+  } catch (err) {
+    console.error('Kakao OAuth route error:', err);
+    return res.status(500).json({ error: '카카오 로그인 처리 중 오류가 발생했어요.' });
   }
 };
