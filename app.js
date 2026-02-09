@@ -40,7 +40,11 @@
   const TOKEN_KEY = 'walk_token';
   function getAuthToken() { try { return localStorage.getItem(TOKEN_KEY); } catch (e) { return null; } }
   function setAuthToken(t) { try { if (t) localStorage.setItem(TOKEN_KEY, t); else localStorage.removeItem(TOKEN_KEY); } catch (e) {} }
-  function clearAuthToken() { setAuthToken(null); }
+  function clearAuthToken() { 
+    setAuthToken(null);
+    // 로그아웃 시 저장된 닉네임도 초기화 (보안)
+    localStorage.removeItem('walk_saved_nickname');
+  }
   const STORAGE_KEYS = {
     pet: 'walk_pet',
     steps: 'pedometer_steps',
@@ -378,8 +382,9 @@
   var lastPositionTime = 0;
   var sessionStartTimeMs = 0;
   var lastSpeedKmh = 0; // 마지막 구간 속도 (km/h)
-  var MIN_SEGMENT_KM = 0.005;
+  var MIN_SEGMENT_KM = 0.001; // 1m로 줄여서 더 정확한 경로 추적
   var MAX_SPEED_KMH = 12;
+  var GPS_ACCURACY_THRESHOLD_M = 50; // GPS 정확도가 50m 이내일 때만 사용
   var tutorialCompleted = false;
   var wildAnimals = []; // 현재 주변에 스폰된 야생 동물들
   var capturedAnimals = []; // 포획한 동물 컬렉션
@@ -545,6 +550,50 @@
     } catch (e) {}
     var th = localStorage.getItem(STORAGE_KEYS.theme);
     if (th === 'morning' || th === 'night') document.body.setAttribute('data-theme', th);
+    
+    // 산책 상태 복원
+    try {
+      var ws = localStorage.getItem('walkState');
+      if (ws === 'walking' || ws === 'idle') {
+        walkState = ws;
+      }
+      // 산책 세션 데이터 복원
+      var savedPathCoords = localStorage.getItem('walk_pathCoords');
+      if (savedPathCoords) {
+        try {
+          pathCoords = JSON.parse(savedPathCoords);
+        } catch (e) {
+          pathCoords = [];
+        }
+      }
+      var savedSessionDist = localStorage.getItem('walk_sessionDistanceKm');
+      if (savedSessionDist != null) {
+        sessionDistanceKm = parseFloat(savedSessionDist) || 0;
+      }
+      var savedSessionXp = localStorage.getItem('walk_sessionXp');
+      if (savedSessionXp != null) {
+        sessionXp = parseInt(savedSessionXp, 10) || 0;
+      }
+      var savedLastPosTime = localStorage.getItem('walk_lastPositionTime');
+      if (savedLastPosTime != null) {
+        lastPositionTime = parseInt(savedLastPosTime, 10) || 0;
+      }
+      var savedSessionStart = localStorage.getItem('walk_sessionStartTimeMs');
+      if (savedSessionStart != null) {
+        sessionStartTimeMs = parseInt(savedSessionStart, 10) || 0;
+      }
+      var savedActiveRoute = localStorage.getItem('walk_activeRouteId');
+      if (savedActiveRoute) {
+        activeRouteId = savedActiveRoute;
+      }
+      var savedActiveRouteGoal = localStorage.getItem('walk_activeRouteGoalKm');
+      if (savedActiveRouteGoal != null) {
+        activeRouteGoalKm = parseFloat(savedActiveRouteGoal) || 0;
+      }
+    } catch (e) {
+      console.error('Failed to restore walk state:', e);
+    }
+    
     lastDate = todayStr();
   }
 
@@ -573,6 +622,25 @@
       localStorage.setItem(STORAGE_KEYS.wildAnimals, JSON.stringify(wildAnimals));
       localStorage.setItem(STORAGE_KEYS.capturedAnimals, JSON.stringify(capturedAnimals));
       localStorage.setItem('walkState', walkState);
+      // 산책 세션 데이터 저장
+      if (walkState === 'walking') {
+        localStorage.setItem('walk_pathCoords', JSON.stringify(pathCoords));
+        localStorage.setItem('walk_sessionDistanceKm', String(sessionDistanceKm));
+        localStorage.setItem('walk_sessionXp', String(sessionXp));
+        localStorage.setItem('walk_lastPositionTime', String(lastPositionTime));
+        localStorage.setItem('walk_sessionStartTimeMs', String(sessionStartTimeMs));
+        if (activeRouteId) localStorage.setItem('walk_activeRouteId', activeRouteId);
+        localStorage.setItem('walk_activeRouteGoalKm', String(activeRouteGoalKm));
+      } else {
+        // 산책이 종료되면 세션 데이터 초기화
+        localStorage.removeItem('walk_pathCoords');
+        localStorage.removeItem('walk_sessionDistanceKm');
+        localStorage.removeItem('walk_sessionXp');
+        localStorage.removeItem('walk_lastPositionTime');
+        localStorage.removeItem('walk_sessionStartTimeMs');
+        localStorage.removeItem('walk_activeRouteId');
+        localStorage.removeItem('walk_activeRouteGoalKm');
+      }
       localStorage.setItem(STORAGE_KEYS.questDate, todayStr());
       localStorage.setItem(STORAGE_KEYS.questProgress, String(questGachaCount));
       localStorage.setItem('walk_quest_claimed', JSON.stringify(questClaimed));
@@ -702,21 +770,7 @@
       .catch(function () { clearAuthToken(); });
   }
 
-  function addStep() {
-    steps++;
-    lifetimeSteps++;
-    // 동물 경험치 획득 (10걸음당 1 경험치)
-    if (steps % 10 === 0 && pet.type) {
-      addPetExp(1);
-    }
-    saveAll();
-    renderSteps();
-    checkRouteRewards();
-    var pw = document.getElementById('page-walk');
-    var ps = document.getElementById('page-story');
-    if (pw && pw.classList.contains('active')) { renderRoutes(); renderQuests(); }
-    if (ps && ps.classList.contains('active')) renderStory();
-  }
+  // 버튼으로 걸음 수 추가 기능 제거됨 - 실제 걸어야만 걸음 수가 증가합니다
 
   function checkRouteRewards() {
     ROUTES.forEach(function (r) {
@@ -894,15 +948,41 @@
     var lat = pos.coords.latitude;
     var lon = pos.coords.longitude;
     var nowMs = pos.timestamp != null ? pos.timestamp : Date.now();
+    var accuracy = pos.coords.accuracy || 999; // GPS 정확도 (미터 단위)
+    
+    // GPS 정확도가 너무 나쁘면 무시 (노이즈 필터링)
+    if (accuracy > GPS_ACCURACY_THRESHOLD_M) {
+      console.log('GPS accuracy too poor:', accuracy, 'm, ignoring');
+      return;
+    }
+    
     if (pathCoords.length > 0) {
       var last = pathCoords[pathCoords.length - 1];
       var seg = haversineKm(last.lat, last.lon, lat, lon);
-      if (seg < MIN_SEGMENT_KM) return;
+      
+      // GPS 정확도를 고려한 최소 이동 거리 (정확도가 나쁘면 더 큰 이동만 인정)
+      var minSegmentWithAccuracy = Math.max(MIN_SEGMENT_KM, (accuracy / 1000) * 0.5);
+      
+      // 실제 위치가 변경되었을 때만 처리 (가만히 있으면 속력 계산 안 함)
+      if (seg < minSegmentWithAccuracy) {
+        // 위치가 거의 변하지 않았으면 속력을 0으로 설정
+        lastSpeedKmh = 0;
+        renderWalk();
+        return;
+      }
+      
+      // 실제 위치 변경이 있을 때만 속력 계산
       var timeDeltaH = (nowMs - lastPositionTime) / 3600000;
-      if (timeDeltaH > 0) {
+      if (timeDeltaH > 0 && seg >= minSegmentWithAccuracy) {
         var speedKmh = seg / timeDeltaH;
-        if (speedKmh > MAX_SPEED_KMH) return;
+        if (speedKmh > MAX_SPEED_KMH) {
+          // 속력이 너무 빠르면 무시 (차량 등)
+          return;
+        }
         lastSpeedKmh = speedKmh;
+      } else {
+        // 시간 정보가 없거나 유효하지 않으면 속력 0
+        lastSpeedKmh = 0;
       }
       var bonus = getEquipmentBonus();
       var distMult = 1 + (bonus.distance / 100);
@@ -923,18 +1003,35 @@
       totalWalkDistanceKm += seg * distMult;
       checkRouteComplete();
       saveAll();
-      pathCoords.push({ lat: lat, lon: lon });
+      // 경로 좌표 저장 (정확도 정보 포함)
+      pathCoords.push({ 
+        lat: lat, 
+        lon: lon, 
+        accuracy: accuracy,
+        timestamp: nowMs
+      });
       lastPositionTime = nowMs;
     } else {
-      pathCoords.push({ lat: lat, lon: lon });
+      // 첫 위치 저장
+      pathCoords.push({ 
+        lat: lat, 
+        lon: lon, 
+        accuracy: accuracy,
+        timestamp: nowMs
+      });
       lastPositionTime = nowMs;
-      sessionStartTimeMs = nowMs;
+      if (sessionStartTimeMs === 0) {
+        sessionStartTimeMs = nowMs;
+      }
     }
     // 야생 동물 스폰 체크 (50m마다)
     checkWildAnimalSpawn(lat, lon);
     renderWalk();
     // 경로 대결 정보 업데이트
     updateRouteRace();
+    
+    // 산책 상태 저장 (백그라운드로 가기 전에 저장)
+    saveAll();
   }
   
   // 경로 대결 정보 업데이트
@@ -1129,7 +1226,13 @@
     var opts = { enableHighAccuracy: true, maximumAge: 0, timeout: 20000 };
     navigator.geolocation.getCurrentPosition(
       function (pos) {
-        pathCoords.push({ lat: pos.coords.latitude, lon: pos.coords.longitude });
+        var accuracy = pos.coords.accuracy || 999;
+        pathCoords.push({ 
+          lat: pos.coords.latitude, 
+          lon: pos.coords.longitude,
+          accuracy: accuracy,
+          timestamp: pos.timestamp != null ? pos.timestamp : Date.now()
+        });
         lastPositionTime = pos.timestamp != null ? pos.timestamp : Date.now();
         watchId = navigator.geolocation.watchPosition(onPosition, function () {}, opts);
         if (statusEl) statusEl.textContent = '산책 중! 걸으면 거리가 누적돼요.';
@@ -1164,6 +1267,11 @@
     updateWalkingStateOnServer('idle');
     if (watchId != null && navigator.geolocation) navigator.geolocation.clearWatch(watchId);
     watchId = null;
+    
+    // 산책 세션 데이터 초기화
+    pathCoords = [];
+    lastSpeedKmh = 0;
+    
     var startBtn = document.getElementById('btnWalkStart');
     var stopBtn = document.getElementById('btnWalkStop');
     if (startBtn) startBtn.disabled = false;
@@ -1172,6 +1280,70 @@
     if (statusEl) statusEl.textContent = '이번 산책 ' + sessionDistanceKm.toFixed(2) + ' km, XP +' + sessionXp + ' (총 XP ' + totalXp + ')';
     saveAll();
     renderWalk();
+  }
+  
+  // 산책 상태 복원 (앱 재시작 시)
+  function restoreWalkState() {
+    if (walkState !== 'walking') return;
+    if (!navigator.geolocation) {
+      console.warn('GPS not available, cannot restore walk state');
+      walkState = 'idle';
+      saveAll();
+      return;
+    }
+    
+    var statusEl = document.getElementById('walkStatus');
+    if (statusEl) statusEl.textContent = '산책 상태 복원 중...';
+    
+    var opts = { enableHighAccuracy: true, maximumAge: 0, timeout: 20000 };
+    navigator.geolocation.getCurrentPosition(
+      function (pos) {
+        // 마지막 위치가 있으면 거리 계산, 없으면 새 위치 추가
+        if (pathCoords.length > 0) {
+          var last = pathCoords[pathCoords.length - 1];
+          var seg = haversineKm(last.lat, last.lon, pos.coords.latitude, pos.coords.longitude);
+          // 마지막 위치와 현재 위치가 너무 멀면 (예: 다른 곳으로 이동) 세션 초기화
+          if (seg > 1.0) { // 1km 이상 차이
+            console.log('Location changed significantly, resetting walk session');
+            pathCoords = [];
+            sessionDistanceKm = 0;
+            sessionXp = 0;
+            sessionStartTimeMs = Date.now();
+          }
+        }
+        
+        // 현재 위치 추가 (정확도 정보 포함)
+        var accuracy = pos.coords.accuracy || 999;
+        pathCoords.push({ 
+          lat: pos.coords.latitude, 
+          lon: pos.coords.longitude,
+          accuracy: accuracy,
+          timestamp: pos.timestamp != null ? pos.timestamp : Date.now()
+        });
+        lastPositionTime = pos.timestamp != null ? pos.timestamp : Date.now();
+        if (sessionStartTimeMs === 0) {
+          sessionStartTimeMs = lastPositionTime;
+        }
+        
+        // GPS watch 재시작
+        watchId = navigator.geolocation.watchPosition(onPosition, function () {}, opts);
+        
+        var startBtn = document.getElementById('btnWalkStart');
+        var stopBtn = document.getElementById('btnWalkStop');
+        if (startBtn) startBtn.disabled = true;
+        if (stopBtn) stopBtn.disabled = false;
+        if (statusEl) statusEl.textContent = '산책 중! 걸으면 거리가 누적돼요.';
+        renderWalk();
+      },
+      function (err) {
+        console.error('Failed to restore walk state:', err);
+        walkState = 'idle';
+        saveAll();
+        if (statusEl) statusEl.textContent = '산책 상태 복원 실패. 다시 시작해 주세요.';
+        renderWalk();
+      },
+      opts
+    );
   }
 
   function renderWalk() {
@@ -1539,7 +1711,7 @@
     var logoutBtn = document.getElementById('btnLogout');
     if (!btn) return;
 
-    // 모바일 앱에서는 로그인 상태에 따라 표시
+    // 모바일 앱에서도 웹과 동일하게 처리 (로그인/회원가입 화면 표시)
     if (isMobileApp) {
       if (isLoggedIn && userProfile && userProfile.nickname) {
         btn.textContent = userProfile.nickname;
@@ -1585,21 +1757,23 @@
     var btnCodex = document.getElementById('btnCodex');
     if (!appMain || !authOverlay) return;
 
-    // 모바일 앱에서는 로그인 여부 확인 후 처리
+    // 모바일 앱에서도 웹과 동일하게 일반 로그인/회원가입 화면 표시
     if (isMobileApp) {
+      // 닉네임 입력 모달은 숨기기 (카카오 로그인 사용)
+      if (mobileNicknameOverlay) mobileNicknameOverlay.style.display = 'none';
+      
       if (isLoggedIn) {
-        // 로그인 성공: 모든 인증 관련 화면 숨기기
+        // 로그인 성공: 메인 화면 표시, 모든 인증 화면 숨기기
         appMain.classList.remove('hidden');
         authOverlay.style.display = 'none';
         authOverlay.classList.remove('auth-gate');
-        if (mobileNicknameOverlay) mobileNicknameOverlay.style.display = 'none';
         if (btnCodex) btnCodex.style.display = 'block';
       } else {
-        // 로그인 안 됨: 닉네임 입력 모달 표시, 도감 숨기기
+        // 로그인 안 됨: 일반 로그인/회원가입 화면 표시
         appMain.classList.add('hidden');
-        authOverlay.style.display = 'none';
+        authOverlay.style.display = 'flex';
+        authOverlay.classList.add('auth-gate');
         if (btnCodex) btnCodex.style.display = 'none';
-        showMobileNicknameModal();
       }
       return;
     }
@@ -1621,12 +1795,7 @@
     }
   }
   function openAuthModal() {
-    // 모바일 앱에서는 닉네임 입력 모달 표시
-    if (isMobileApp) {
-      showMobileNicknameModal();
-      return;
-    }
-
+    // 모바일 앱에서도 웹과 동일하게 일반 로그인/회원가입 화면 표시
     var overlay = document.getElementById('authOverlay');
     if (overlay) { overlay.style.display = 'flex'; overlay.classList.remove('auth-gate'); }
     document.getElementById('authLoginPanel').style.display = 'block';
@@ -1671,12 +1840,33 @@
       return;
     }
 
-    showAuthLoading();
+    showAuthLoading('계정 확인 중...');
     
-    // 모바일 앱에서는 디바이스 고유 ID를 비밀번호로 사용 (간단한 해시)
-    var deviceId = 'mobile_' + (localStorage.getItem('walk_device_id') || Math.random().toString(36).substring(2, 15) + Date.now().toString(36));
-    localStorage.setItem('walk_device_id', deviceId);
-    var password = deviceId.substring(0, 20); // 최대 20자
+    // 보안: 닉네임과 디바이스 ID를 조합하여 고유한 비밀번호 생성
+    // 같은 기기에서도 다른 닉네임은 다른 계정이어야 함
+    var deviceId = localStorage.getItem('walk_device_id');
+    if (!deviceId) {
+      // 디바이스 ID가 없으면 새로 생성
+      deviceId = 'mobile_' + Math.random().toString(36).substring(2, 15) + Date.now().toString(36);
+      localStorage.setItem('walk_device_id', deviceId);
+    }
+    
+    // 닉네임과 디바이스 ID를 조합하여 고유 비밀번호 생성
+    // 이렇게 하면 같은 기기에서도 다른 닉네임은 다른 계정이 됨
+    var passwordBase = nick + '_' + deviceId;
+    // 간단한 해시 생성 (실제로는 서버에서 해싱되지만, 여기서는 고유성 보장)
+    var password = 'mobile_' + btoa(passwordBase).substring(0, 20).replace(/[^a-zA-Z0-9]/g, 'a');
+    
+    // 저장된 닉네임 확인 (이미 로그인한 경우)
+    var savedNickname = localStorage.getItem('walk_saved_nickname');
+    if (savedNickname && savedNickname !== nick) {
+      // 다른 닉네임을 입력한 경우, 기존 세션 초기화
+      console.log('Different nickname detected, clearing session');
+      clearAuthToken();
+      isLoggedIn = false;
+      userProfile = null;
+    }
+    localStorage.setItem('walk_saved_nickname', nick);
 
     // 먼저 회원가입 시도
     var signupUrl = API_BASE + '/api/auth/signup';
@@ -1717,8 +1907,10 @@
         });
       } else {
         // 회원가입 실패 시 로그인 시도
+        // 하지만 닉네임이 다르면 다른 계정이므로 로그인도 실패해야 함
         return r.text().then(function(text) {
           console.log('Mobile signup failed, trying login:', text);
+          // 닉네임과 비밀번호가 일치하는 계정만 로그인 가능
           return doMobileLogin(nick, password);
         });
       }
@@ -1745,6 +1937,12 @@
       userProfile = x.body.user;
       isLoggedIn = true;
       
+      // 닉네임 저장 (보안: 다음 로그인 시 같은 닉네임인지 확인)
+      if (userProfile && userProfile.nickname) {
+        localStorage.setItem('walk_saved_nickname', userProfile.nickname);
+        console.log('Login successful, saved nickname:', userProfile.nickname);
+      }
+      
       // 사용자 데이터 로드
       return fetch(API_BASE + '/api/user/data', { 
         headers: { 
@@ -1766,6 +1964,15 @@
     })
     .then(function(body) {
       hideAuthLoading();
+      
+      // 로그인 상태 재확인 (중요: 타이밍 문제 방지)
+      if (!isLoggedIn || !userProfile) {
+        console.error('Login state lost, redirecting to login');
+        hideMobileNicknameModal();
+        renderAuthGate();
+        return;
+      }
+      
       if (body && body.data) {
         try {
           var data = typeof body.data === 'string' ? JSON.parse(body.data) : body.data;
@@ -1782,20 +1989,32 @@
       closeAuthModal();
       
       // 인증 게이트 업데이트 (모든 인증 화면 숨기고 메인 화면 표시)
-      renderAuthGate();
-      
-      setTimeout(function() {
-        renderHeaderAuth();
-        renderPet();
-        renderAttendance();
-        var card = document.getElementById('attendanceCard');
-        if (card) card.style.display = 'block';
-        if (userProfile && userProfile.nickname) {
-          showWelcomeModal(userProfile.nickname);
-        } else {
-          showWelcomeModal();
-        }
-      }, 300);
+      // isLoggedIn이 true인지 다시 확인
+      if (isLoggedIn && userProfile) {
+        renderAuthGate();
+        
+        setTimeout(function() {
+          // 다시 한 번 확인
+          if (!isLoggedIn || !userProfile) {
+            console.error('Login state lost in setTimeout, showing login');
+            renderAuthGate();
+            return;
+          }
+          renderHeaderAuth();
+          renderPet();
+          renderAttendance();
+          var card = document.getElementById('attendanceCard');
+          if (card) card.style.display = 'block';
+          if (userProfile && userProfile.nickname) {
+            showWelcomeModal(userProfile.nickname);
+          } else {
+            showWelcomeModal();
+          }
+        }, 300);
+      } else {
+        console.error('Login state invalid, showing login screen');
+        renderAuthGate();
+      }
     })
     .catch(function(err) {
       hideAuthLoading();
@@ -1971,16 +2190,33 @@
     saveAll();
   }
   
-  function showAuthLoading() {
+  function showAuthLoading(message) {
     var loading = document.getElementById('authLoading');
     var overlay = document.getElementById('authOverlay');
-    if (loading) loading.classList.add('active');
-    if (overlay) overlay.style.display = 'flex';
+    if (loading) {
+      loading.classList.add('active');
+      // 로딩 메시지 표시
+      var loadingText = loading.querySelector('.auth-loading-text');
+      if (loadingText) {
+        loadingText.textContent = message || '처리 중...';
+      }
+    }
+    // 로딩 중에는 오버레이 표시 (모바일 포함)
+    if (overlay) {
+      overlay.style.display = 'flex';
+    }
   }
   
   function hideAuthLoading() {
     var loading = document.getElementById('authLoading');
-    if (loading) loading.classList.remove('active');
+    if (loading) {
+      loading.classList.remove('active');
+      // 로딩 메시지 초기화
+      var loadingText = loading.querySelector('.auth-loading-text');
+      if (loadingText) {
+        loadingText.textContent = '처리 중...';
+      }
+    }
   }
   function doLogin() {
     var nick = (document.getElementById('authLoginNick') || {}).value.trim();
@@ -1992,6 +2228,8 @@
       showToast('서버 설정 오류가 발생했어요. 앱을 재시작해 주세요.');
       return;
     }
+    
+    showAuthLoading('로그인 중...');
     
     var url = API_BASE + '/api/auth/login';
     console.log('Login attempt:', { 
@@ -2160,6 +2398,9 @@
     if (!email || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) { showToast('올바른 이메일을 입력해 주세요.'); return; }
     if (!pw || pw.length < 6) { showToast('비밀번호는 6자 이상이에요.'); return; }
     if (pw !== pw2) { showToast('비밀번호가 일치하지 않아요.'); return; }
+    
+    showAuthLoading('회원가입 중...');
+    
     var url = API_BASE + '/api/auth/signup';
     console.log('Signup attempt:', { url: url, API_BASE: API_BASE });
     fetch(url, {
@@ -2390,7 +2631,7 @@
       // 모바일 앱에서는 서버 사이드 OAuth 사용
       if (isMobileApp) {
         console.log('모바일 앱에서 카카오 로그인 - 서버 사이드 OAuth 사용');
-        showAuthLoading();
+        showAuthLoading('카카오 로그인 준비 중...');
         
         // 서버에서 카카오 OAuth URL 가져오기
         console.log('카카오 OAuth 시작 요청:', API_BASE + '/api/auth/kakao-oauth-start');
@@ -2511,7 +2752,7 @@
       }
       
       // 로딩 표시
-      showAuthLoading();
+      showAuthLoading('카카오 로그인 처리 중...');
       Kakao.Auth.login({
         // 닉네임만 요청 (이메일은 권한 없음 상태이므로 제외)
         scope: 'profile_nickname',
@@ -2808,6 +3049,8 @@
       tab === 'findPw' ? '비밀번호 찾기' : '로그인';
   }
   function doLogout() {
+    // 저장된 닉네임도 초기화
+    localStorage.removeItem('walk_saved_nickname');
     // 카카오 로그인인 경우 카카오 로그아웃도 처리
     if (typeof Kakao !== 'undefined' && Kakao.Auth.getAccessToken()) {
       Kakao.Auth.logout(function() {
@@ -3555,9 +3798,8 @@
     document.querySelectorAll('.tab-btn').forEach(function (btn) {
       btn.addEventListener('click', function () { switchTab(btn.getAttribute('data-tab')); });
     });
-    var btnAdd = document.getElementById('btnAdd');
     var btnReset = document.getElementById('btnReset');
-    if (btnAdd) btnAdd.addEventListener('click', addStep);
+    // 버튼으로 걸음 수 추가 기능 제거됨
     if (btnReset) btnReset.addEventListener('click', function () {
       if (confirm('오늘의 걸음 수만 0으로 초기화할까요? (누적 걸음과 장비는 유지됩니다)')) {
         steps = 0;
@@ -3666,7 +3908,11 @@
     var authClose = document.getElementById('authClose');
     if (authClose) authClose.addEventListener('click', closeAuthModal);
     var authOverlay = document.getElementById('authOverlay');
-    if (authOverlay) authOverlay.addEventListener('click', function(e) { if (e.target === authOverlay && !authOverlay.classList.contains('auth-gate')) closeAuthModal(); });
+    if (authOverlay) {
+      authOverlay.addEventListener('click', function(e) { 
+        if (e.target === authOverlay && !authOverlay.classList.contains('auth-gate')) closeAuthModal(); 
+      });
+    }
     var btnAuthLogin = document.getElementById('btnAuthLogin');
     if (btnAuthLogin) btnAuthLogin.addEventListener('click', doLogin);
     var btnAuthSignup = document.getElementById('btnAuthSignup');
@@ -3772,40 +4018,16 @@
 
   var lastAcc = 0, lastPeakTime = 0;
   function onMotion(e) {
-    var acc = e.accelerationIncludingGravity;
-    if (acc.x == null || acc.y == null || acc.z == null) return;
-    var magnitude = Math.sqrt(acc.x * acc.x + acc.y * acc.y + acc.z * acc.z);
-    var now = Date.now();
-    if (magnitude > 12 && (now - lastPeakTime) > 400 && lastAcc > 0 && lastAcc < magnitude) {
-      lastPeakTime = now;
-      addStep();
-    }
-    lastAcc = magnitude;
+    // 센서 기반 걸음 감지는 GPS 기반 산책으로 대체됨
+    // 실제 걸어야만 거리가 누적됩니다
   }
   function initSensorAndStatus() {
     var statusEl = document.getElementById('status');
     if (!statusEl) return;
-    if (typeof DeviceMotionEvent !== 'undefined') {
-      if (typeof DeviceMotionEvent.requestPermission === 'function') {
-        statusEl.textContent = 'iOS: 화면을 한 번 탭하면 센서를 켤 수 있어요. 버튼으로도 걸음을 추가할 수 있어요.';
-        document.body.addEventListener('click', function req() {
-          DeviceMotionEvent.requestPermission()
-            .then(function (p) {
-              if (p === 'granted') {
-                window.addEventListener('devicemotion', onMotion);
-                statusEl.textContent = '걸음 감지 켜짐';
-                statusEl.classList.add('sensor-ok');
-              }
-            }, function () { statusEl.textContent = '센서 사용 불가. 버튼으로 걸음을 추가해 주세요.'; });
-        }, { once: true });
-      } else {
-        window.addEventListener('devicemotion', onMotion);
-        statusEl.textContent = '걸음 감지 켜짐 (버튼으로도 추가 가능)';
-        statusEl.classList.add('sensor-ok');
-      }
-    } else {
-      statusEl.textContent = '버튼을 눌러 걸음을 추가해 주세요.';
-    }
+    // 실제 걸어야만 걸음 수가 증가합니다
+    // 산책 탭에서 "산책 시작하기"를 눌러 GPS로 이동 거리를 기록하세요
+    statusEl.textContent = '산책 탭에서 "산책 시작하기"를 눌러 실제 걸어야만 거리가 기록됩니다.';
+    statusEl.classList.remove('sensor-ok');
   }
 
   function init() {
@@ -3833,6 +4055,12 @@
       renderEnhanceSelect();
       renderEquipmentCodex();
       renderCodexAnimals();
+      
+      // 산책 상태 복원 (앱 재시작 시)
+      if (walkState === 'walking') {
+        console.log('Restoring walk state...');
+        restoreWalkState();
+      }
       var themeToggle = document.getElementById('themeToggle');
       if (themeToggle && document.body.getAttribute('data-theme') === 'morning') themeToggle.textContent = '☀️';
       initSensorAndStatus();
@@ -4837,6 +5065,43 @@
       console.log('App opened with URL:', data.url);
       if (data.url && (data.url.includes('walkstory://oauth') || data.url.includes('oauth'))) {
         window.handleOAuthCallback(data.url);
+      }
+    });
+    
+    // 앱 상태 변경 감지 (백그라운드/포그라운드)
+    window.Capacitor.Plugins.App.addListener('appStateChange', function(state) {
+      console.log('App state changed:', state.isActive);
+      if (state.isActive) {
+        // 앱이 포그라운드로 돌아옴 - 산책 상태 복원
+        if (walkState === 'walking' && !watchId) {
+          console.log('App resumed, restoring walk state');
+          restoreWalkState();
+        }
+      } else {
+        // 앱이 백그라운드로 감 - 산책 상태 저장
+        if (walkState === 'walking') {
+          console.log('App paused, saving walk state');
+          saveAll();
+        }
+      }
+    });
+  }
+  
+  // 웹 브라우저에서도 페이지 가시성 변경 감지
+  if (typeof document !== 'undefined') {
+    document.addEventListener('visibilitychange', function() {
+      if (document.hidden) {
+        // 페이지가 숨겨짐 (백그라운드)
+        if (walkState === 'walking') {
+          console.log('Page hidden, saving walk state');
+          saveAll();
+        }
+      } else {
+        // 페이지가 보임 (포그라운드)
+        if (walkState === 'walking' && !watchId) {
+          console.log('Page visible, restoring walk state');
+          restoreWalkState();
+        }
       }
     });
   }

@@ -116,9 +116,8 @@
           </div>
         </div>
         <div class="goal-badge" id="goalBadge">🎉 목표 달성!</div>
-        <div class="manual-area">
-          <button type="button" class="btn-add" id="btnAdd" title="걸음 추가">+</button>
-          <p class="manual-hint" id="manualHint">버튼으로 걸음을 추가할 수 있어요</p>
+        <div class="manual-area" style="display: none;">
+          <!-- 버튼으로 걸음 수 추가 기능 제거됨 - 실제 걸어야만 거리가 기록됩니다 -->
         </div>
       </div>
       <p class="status" id="status">준비 중...</p>
@@ -463,7 +462,7 @@
     <!-- 로딩 오버레이 -->
     <div class="auth-loading" id="authLoading">
       <div class="auth-loading-spinner"></div>
-      <div style="color: var(--text-muted); font-size: 0.9rem;">로그인 중...</div>
+      <div class="auth-loading-text" style="color: var(--text-muted); font-size: 0.9rem;">처리 중...</div>
     </div>
 
     <!-- 모바일 닉네임 입력 모달 -->
