@@ -11,7 +11,7 @@ const getRedirectUri = (req) => {
   }
   const origin = req.headers.origin || req.headers.host;
   const protocol = req.headers['x-forwarded-proto'] || 'https';
-  return `${protocol}://${origin}/api/auth/kakao-oauth/callback`;
+  return `${protocol}://${origin}/api/auth/kakao-oauth-callback`;
 };
 
 // 카카오 OAuth 시작 (리다이렉트 URL 반환)

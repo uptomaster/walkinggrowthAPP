@@ -2047,7 +2047,7 @@
         showAuthLoading();
         
         // 서버에서 카카오 OAuth URL 가져오기
-        fetch(API_BASE + '/api/auth/kakao-oauth/start', {
+        fetch(API_BASE + '/api/auth/kakao-oauth-start', {
           method: 'GET',
           headers: { 'Content-Type': 'application/json' },
         })
