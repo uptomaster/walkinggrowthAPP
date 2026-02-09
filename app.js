@@ -3591,7 +3591,7 @@
       var isSent = msg.sender_id === me;
       var time = new Date(msg.created_at).toLocaleTimeString('ko-KR', { hour: '2-digit', minute: '2-digit' });
       return '<div class="chat-message ' + (isSent ? 'sent' : 'received') + '">' +
-        '<div>' + escapeHtml(msg.message) + '</div>' +
+        '<div class="chat-message-content">' + escapeHtml(msg.message) + '</div>' +
         '<div class="chat-message-time">' + time + '</div>' +
         '</div>';
     }).join('');
@@ -3712,8 +3712,10 @@
       var isLeader = currentParty && currentParty.leaderId === member.id;
       var isMe = member.id === me;
       return '<div class="party-member' + (isLeader ? ' party-member-leader' : '') + '">' +
-        '<div class="party-member-name">' + escapeHtml(member.nickname) + (isMe ? ' (나)' : '') + '</div>' +
+        '<div class="party-member-info">' +
+        '<div class="party-member-name">' + escapeHtml(member.nickname) + (isMe ? ' <span style="color:var(--text-muted);font-weight:400;">(나)</span>' : '') + '</div>' +
         (isLeader ? '<div class="party-member-role">리더</div>' : '') +
+        '</div>' +
         '</div>';
     }).join('');
   }

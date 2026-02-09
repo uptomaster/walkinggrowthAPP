@@ -38,22 +38,28 @@ module.exports = async (req, res) => {
         }
         const partyData = party.rows[0];
         // 멤버 정보 조회
-        const allMemberIds = [partyData.leader_id, ...partyData.member_ids];
-        const members = await pool.query(
-          `SELECT id, nickname FROM users WHERE id = ANY($1::int[])`,
-          [allMemberIds]
-        );
+        const memberIds = partyData.member_ids || [];
+        // 리더를 포함한 모든 멤버 ID (중복 제거)
+        const allMemberIds = Array.from(new Set([partyData.leader_id, ...memberIds]));
+        let members = { rows: [] };
+        if (allMemberIds.length > 0) {
+          members = await pool.query(
+            `SELECT id, nickname FROM users WHERE id = ANY($1::int[])`,
+            [allMemberIds]
+          );
+        }
         return res.json({ 
           party: {
             id: partyData.id,
             leaderId: partyData.leader_id,
-            memberIds: partyData.member_ids,
+            memberIds: memberIds,
             members: members.rows,
             createdAt: partyData.created_at
           }
         });
       } catch (err) {
         console.error('Party me error:', err);
+        console.error('Error details:', { message: err.message, stack: err.stack });
         return res.status(500).json({ error: '파티 정보 조회 중 오류가 발생했어요.' });
       }
     });
@@ -63,7 +69,17 @@ module.exports = async (req, res) => {
   if (req.method === 'POST') {
     return authMiddleware(req, res, async function() {
       try {
-        const body = typeof req.body === 'string' ? JSON.parse(req.body) : req.body;
+        let body = req.body;
+        if (typeof body === 'string') {
+          try {
+            body = JSON.parse(body);
+          } catch (e) {
+            return res.status(400).json({ error: '잘못된 요청 형식이에요.' });
+          }
+        }
+        if (!body || typeof body !== 'object') {
+          return res.status(400).json({ error: '요청 본문이 필요해요.' });
+        }
         const { action, partyId } = body;
         
         // 파티 생성
@@ -110,7 +126,8 @@ module.exports = async (req, res) => {
           if (party.rows.length === 0) {
             return res.status(404).json({ error: '파티를 찾을 수 없어요.' });
           }
-          if (party.rows[0].member_ids.length >= 4) {
+          const currentMemberIds = party.rows[0].member_ids || [];
+          if (currentMemberIds.length >= 4) {
             return res.status(400).json({ error: '파티가 가득 찼어요. (최대 4명)' });
           }
           // 친구 관계 확인 (리더와 친구여야 함)
@@ -163,6 +180,7 @@ module.exports = async (req, res) => {
         return res.status(400).json({ error: '올바른 액션을 입력해 주세요.' });
       } catch (err) {
         console.error('Party action error:', err);
+        console.error('Error details:', { message: err.message, stack: err.stack, body: req.body });
         return res.status(500).json({ error: '파티 처리 중 오류가 발생했어요.' });
       }
     });

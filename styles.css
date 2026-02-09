@@ -1,4 +1,4 @@
-/* 나이트 (기본) - 부드러운 다크 그린 톤 */
+/* ??? (??) - ???? ?? ?? ? */
     :root, [data-theme="night"] {
       --bg: #0f1419;
       --bg-soft: #151c23;
@@ -21,7 +21,7 @@
       --rarity-epic: #a78bfa;
       --rarity-legend: #fcd34d;
     }
-    /* 모닝 - 따뜻한 아침 톤 */
+    /* ?? - ??? ?? ? */
     [data-theme="morning"] {
       --bg: #f0f7f0;
       --bg-soft: #f7fbf7;
@@ -106,7 +106,7 @@
     .welcome-message { color: var(--text-muted); margin-bottom: 1.5rem; }
     .btn-welcome-close { background: var(--accent); color: var(--bg); border: none; border-radius: var(--radius); padding: 0.75rem 2rem; font-size: 0.9rem; font-weight: 600; cursor: pointer; transition: transform 0.2s ease, box-shadow 0.2s ease; }
     .btn-welcome-close:active { transform: scale(0.95); }
-    /* 도감 플로팅 버튼 */
+    /* ?? ??? ?? */
     .codex-fab {
       position: fixed;
       right: 1.2rem;
@@ -127,7 +127,7 @@
     }
     .codex-fab:hover { transform: translateY(-1px); box-shadow: 0 14px 30px rgba(0,0,0,0.4); }
     .codex-fab:active { transform: translateY(1px) scale(0.97); box-shadow: 0 6px 15px rgba(0,0,0,0.3); }
-    /* 도감 모달 */
+    /* ?? ?? */
     .codex-overlay {
       position: fixed;
       inset: 0;
@@ -280,7 +280,7 @@
     .title-badge { font-size: 0.7rem; color: var(--accent); margin-top: 0.35rem; font-weight: 600; }
     .walk-stat.walk-total { grid-column: 1 / -1; }
 
-    /* 탭 네비게이션 */
+    /* ? ????? */
     .tab-nav {
       display: flex;
       flex-wrap: wrap;
@@ -317,20 +317,23 @@
     @keyframes slideUp { from { transform: translateX(-50%) translateY(0); opacity: 1; } to { transform: translateX(-50%) translateY(-20px); opacity: 0; } }
     .wild-animal-notification { animation: slideDown 0.3s ease; }
 
-    /* ===== 카드 공통 ===== */
+    /* ===== ?? ?? ===== */
     .step-card, .walk-card, .avatar-section, .story-section {
       background: var(--card);
       border-radius: var(--radius-lg);
       padding: 1.5rem;
-      margin-bottom: 1rem;
-      border: 1px solid rgba(255,255,255,0.06);
+      margin-bottom: 1.25rem;
+      border: 1px solid rgba(255,255,255,0.08);
       box-shadow: var(--shadow);
-      transition: box-shadow 0.2s ease;
+      transition: all 0.2s ease;
     }
-    .step-card:hover, .walk-card:hover, .avatar-section:hover { box-shadow: var(--shadow), 0 0 0 1px rgba(255,255,255,0.03); }
+    .step-card:hover, .walk-card:hover, .avatar-section:hover { 
+      box-shadow: var(--shadow), 0 0 0 1px rgba(255,255,255,0.05); 
+      transform: translateY(-1px);
+    }
     .story-section { min-height: 200px; }
 
-    /* ===== 걸음 탭 ===== */
+    /* ===== ?? ? ===== */
     .step-value-wrap { display: flex; align-items: baseline; justify-content: center; gap: 0.3rem; margin-bottom: 0.3rem; }
     .step-value { font-size: 3.25rem; font-weight: 700; letter-spacing: -0.04em; background: linear-gradient(135deg, var(--accent), #10b981); -webkit-background-clip: text; -webkit-text-fill-color: transparent; background-clip: text; line-height: 1; }
     .step-unit { font-size: 1.1rem; font-weight: 600; color: var(--text-muted); }
@@ -342,12 +345,12 @@
     .progress-bar-fill { height: 100%; background: linear-gradient(90deg, var(--accent), #10b981); border-radius: 999px; width: 0%; transition: width 0.45s ease; box-shadow: 0 0 12px var(--accent-glow); }
     .manual-area { text-align: center; margin-top: 1.25rem; }
     .btn-add {
-      width: 58px; height: 58px; border-radius: 50%; border: none; background: linear-gradient(145deg, var(--accent), #10b981); color: var(--bg);
+      width: 60px; height: 60px; border-radius: 50%; border: none; background: linear-gradient(145deg, var(--accent), #10b981); color: #ffffff;
       font-size: 1.6rem; font-weight: 700; cursor: pointer; box-shadow: 0 4px 20px var(--accent-glow);
-      transition: transform 0.2s ease, box-shadow 0.2s ease; font-family: inherit; line-height: 1;
+      transition: all 0.2s ease; font-family: inherit; line-height: 1;
     }
-    .btn-add:hover { transform: scale(1.06); box-shadow: 0 6px 28px var(--accent-glow); }
-    .btn-add:active { transform: scale(0.97); }
+    .btn-add:hover { transform: scale(1.08) translateY(-2px); box-shadow: 0 6px 28px var(--accent-glow); }
+    .btn-add:active { transform: scale(0.95); }
     .manual-hint { font-size: 0.75rem; color: var(--text-muted); margin-top: 0.5rem; }
     .status { font-size: 0.75rem; color: var(--text-muted); text-align: center; margin-top: 0.75rem; }
     .status.sensor-ok { color: var(--accent); }
@@ -362,8 +365,8 @@
     .step-card.goal-reached .step-value { animation: pulse 1.5s ease infinite; }
     @keyframes pulse { 50% { opacity: 0.9; } }
 
-    /* ===== 아바타 탭 ===== */
-    /* 제페토 스타일 3D 캐릭터 영역 (플레이스홀더) */
+    /* ===== ??? ? ===== */
+    /* ??? ??? 3D ??? ?? (??????) */
     .avatar-3d-placeholder {
       width: 100%; min-height: 220px; margin: 0 auto 1rem;
       background: linear-gradient(180deg, rgba(52,211,153,0.06) 0%, rgba(0,0,0,0.2) 100%);
@@ -390,7 +393,7 @@
       width: 80px; height: 120px;
       position: relative;
     }
-    /* 제페토 스타일 치비: 머리 크게, 몸 작게 */
+    /* ??? ??? ??: ?? ??, ? ?? */
     .avatar-body { position: absolute; bottom: 0; left: 50%; transform: translateX(-50%); width: 42px; height: 48px; border-radius: 21px 21px 8px 8px; }
     .avatar-head { position: absolute; bottom: 40px; left: 50%; transform: translateX(-50%); width: 44px; height: 44px; border-radius: 50%; }
     .avatar-hair { position: absolute; bottom: 52px; left: 50%; transform: translateX(-50%); width: 52px; height: 22px; border-radius: 50% 50% 0 0; }
@@ -409,7 +412,7 @@
     .color-swatch:hover { transform: scale(1.08); }
     .color-swatch.active { border-color: var(--accent); box-shadow: 0 0 0 2px var(--accent-dim), 0 0 12px var(--accent-glow); }
 
-    /* ===== 산책로 탭 ===== */
+    /* ===== ??? ? ===== */
     .route-list { display: flex; flex-direction: column; gap: 0.65rem; }
     .route-card {
       background: var(--card);
@@ -431,7 +434,7 @@
     .route-status.claim { background: var(--accent-dim); color: var(--accent); }
     .route-status.done { background: rgba(52,211,153,0.2); color: var(--accent); }
 
-    /* ===== 장비 탭 ===== */
+    /* ===== ?? ? ===== */
     .equipped-section { margin-bottom: 1.25rem; }
     .equipped-title { font-size: 0.8rem; color: var(--text-muted); margin-bottom: 0.5rem; font-weight: 600; text-transform: uppercase; letter-spacing: 0.05em; }
     .equipped-slots { display: grid; grid-template-columns: repeat(3, 1fr); gap: 0.5rem; }
@@ -477,7 +480,7 @@
     .inv-item.rarity-rare { border-color: rgba(96,165,250,0.4); }
     .inv-item.rarity-epic { border-color: rgba(167,139,250,0.5); box-shadow: 0 0 12px rgba(167,139,250,0.2); }
     .inv-item.rarity-legend { border-color: rgba(251,191,36,0.6); box-shadow: 0 0 16px rgba(251,191,36,0.25); }
-    /* 등급(티어)별 장비 스타일 */
+    /* ??(??)? ?? ??? */
     .inv-item .inv-tier { font-size: 0.55rem; font-weight: 700; text-transform: uppercase; letter-spacing: 0.04em; margin-top: 0.15rem; }
     .inv-item .inv-enhance { font-size: 0.85rem; font-weight: 800; color: var(--accent); margin-top: 0.1rem; }
     .inv-item.tier-standard { border-color: rgba(148,163,184,0.4); }
@@ -493,12 +496,12 @@
     .equipped-slot.tier-prime.filled { border-color: rgba(167,139,250,0.5); box-shadow: 0 0 10px rgba(167,139,250,0.25); }
     .equipped-slot.tier-signature.filled { border-color: rgba(251,191,36,0.6); box-shadow: 0 0 12px rgba(251,191,36,0.3); }
 
-    /* ===== 스토리 탭 ===== */
+    /* ===== ??? ? ===== */
     .story-title { font-size: 0.95rem; color: var(--accent); margin-bottom: 0.75rem; font-weight: 600; }
     .story-text { font-size: 0.9rem; line-height: 1.7; color: var(--text); font-weight: 400; white-space: pre-line; }
     .story-milestone { font-size: 0.78rem; color: var(--text-muted); margin-top: 1rem; }
 
-    /* 보상 팝업 */
+    /* ?? ?? */
     .toast {
       position: fixed; bottom: 5.5rem; left: 50%; transform: translateX(-50%) translateY(100px);
       background: var(--card); border: 1px solid var(--accent);
@@ -509,7 +512,7 @@
     }
     .toast.show { transform: translateX(-50%) translateY(0); opacity: 1; }
 
-    /* 오늘의 퀘스트 */
+    /* ??? ??? */
     .quest-card { background: var(--card); border-radius: var(--radius-lg); padding: 1rem; margin-bottom: 1rem; border: 1px solid rgba(255,255,255,0.06); box-shadow: var(--shadow); }
     .quest-desc { font-size: 0.8rem; color: var(--text-muted); margin-bottom: 0.75rem; }
     .quest-list { display: flex; flex-direction: column; gap: 0.5rem; }
@@ -522,17 +525,17 @@
     .quest-item .btn-claim { padding: 0.35rem 0.65rem; font-size: 0.75rem; border-radius: 0.5rem; border: none; background: linear-gradient(145deg, var(--gold), #d97706); color: #1a1a1a; font-weight: 600; cursor: pointer; font-family: inherit; }
     .quest-item .quest-done-label { font-size: 0.75rem; color: var(--accent); font-weight: 600; }
 
-    /* ===== 산책 탭 (코스 + GPS) ===== */
+    /* ===== ?? ? (?? + GPS) ===== */
     .walk-title { font-size: 1rem; font-weight: 600; margin-bottom: 1rem; color: var(--accent); }
     .course-set { margin-bottom: 1rem; }
     .course-label { display: block; font-size: 0.82rem; color: var(--text-muted); margin-bottom: 0.4rem; font-weight: 500; }
     .course-input { width: 100%; padding: 0.65rem 0.85rem; border-radius: var(--radius); border: 1px solid rgba(255,255,255,0.1); background: var(--bg-soft); color: var(--text); font-size: 1rem; }
     .walk-actions { display: flex; gap: 0.5rem; margin-bottom: 1rem; }
-    .btn-walk-start, .btn-walk-stop { flex: 1; padding: 0.8rem; border-radius: var(--radius); font-size: 0.95rem; font-weight: 600; font-family: inherit; cursor: pointer; border: none; transition: transform 0.15s, box-shadow 0.15s; }
-    .btn-walk-start { background: linear-gradient(145deg, var(--accent), #10b981); color: var(--bg); box-shadow: 0 4px 16px var(--accent-glow); }
-    .btn-walk-start:hover:not(:disabled) { transform: translateY(-1px); box-shadow: 0 6px 20px var(--accent-glow); }
-    .btn-walk-stop { background: rgba(248,113,113,0.25); color: #f87171; border: 1px solid rgba(248,113,113,0.4); }
-    .btn-walk-stop:hover:not(:disabled) { transform: translateY(-1px); }
+    .btn-walk-start, .btn-walk-stop { flex: 1; padding: 0.85rem; border-radius: var(--radius); font-size: 0.95rem; font-weight: 600; font-family: inherit; cursor: pointer; border: none; transition: all 0.2s ease; }
+    .btn-walk-start { background: linear-gradient(145deg, var(--accent), #10b981); color: #ffffff; box-shadow: 0 4px 16px var(--accent-glow); }
+    .btn-walk-start:hover:not(:disabled) { transform: translateY(-2px); box-shadow: 0 6px 24px var(--accent-glow); }
+    .btn-walk-stop { background: rgba(248,113,113,0.2); color: #f87171; border: 1px solid rgba(248,113,113,0.4); }
+    .btn-walk-stop:hover:not(:disabled) { transform: translateY(-2px); background: rgba(248,113,113,0.3); box-shadow: 0 4px 12px rgba(248,113,113,0.2); }
     .btn-walk-start:disabled, .btn-walk-stop:disabled { opacity: 0.5; cursor: not-allowed; transform: none; }
     .walk-live { display: grid; grid-template-columns: 1fr 1fr; gap: 0.5rem; margin-bottom: 0.75rem; }
     .walk-stat { background: var(--bg-soft); border-radius: 0.6rem; padding: 0.65rem; text-align: center; font-size: 0.85rem; color: var(--text-muted); border: 1px solid rgba(255,255,255,0.05); }
@@ -549,7 +552,7 @@
     .our-map-wrap svg { width: 100%; height: 100%; display: block; }
     .our-map-path { fill: none; stroke: var(--accent); stroke-width: 4; stroke-linecap: round; stroke-linejoin: round; opacity: 0.9; filter: drop-shadow(0 0 6px var(--accent-glow)); transition: d 0.2s ease; }
     [data-theme="morning"] .our-map-path { stroke: var(--accent); filter: drop-shadow(0 0 4px rgba(22,163,74,0.35)); }
-    /* 전체 코스 맵에서는 이전 경로를 더 눈에 띄게 골드 톤으로 표시 */
+    /* ?? ?? ???? ?? ??? ? ?? ?? ?? ??? ?? */
     .routes-map-box .our-map-path { stroke: var(--gold); stroke-width: 4; filter: drop-shadow(0 0 6px var(--gold-dim)); }
     .our-map-char { transition: transform 0.2s ease-out; }
     .our-map-char .char-body { fill: var(--accent); stroke: var(--bg); stroke-width: 2; }
@@ -571,13 +574,15 @@
     .achievement-item .ach-name { font-size: 0.8rem; font-weight: 600; }
     .achievement-item .ach-desc { font-size: 0.7rem; color: var(--text-muted); margin-top: 0.15rem; }
 
-    /* 가챠(보급 뽑기) */
-    .gacha-card { background: var(--card); border-radius: var(--radius-lg); padding: 1.5rem; margin-bottom: 1rem; border: 1px solid rgba(255,255,255,0.06); text-align: center; }
-    .gacha-gold { font-size: 1.5rem; font-weight: 700; color: var(--gold); margin-bottom: 0.5rem; }
-    .gacha-buttons { display: flex; flex-wrap: wrap; gap: 0.5rem; justify-content: center; margin-top: 0.75rem; }
-    .btn-gacha { padding: 0.75rem 1.25rem; border-radius: var(--radius); background: linear-gradient(145deg, var(--gold), #d97706); color: #1a1a1a; font-weight: 700; font-size: 0.9rem; border: none; cursor: pointer; font-family: inherit; }
-    .btn-gacha:disabled { opacity: 0.5; cursor: not-allowed; }
-    .btn-gacha-premium { padding: 0.75rem 1.25rem; border-radius: var(--radius); background: linear-gradient(145deg, #a78bfa, #7c3aed); color: #fff; font-weight: 700; font-size: 0.9rem; border: none; cursor: pointer; font-family: inherit; }
+    /* ??(?? ??) */
+    .gacha-card { background: var(--card); border-radius: var(--radius-lg); padding: 1.5rem; margin-bottom: 1rem; border: 1px solid rgba(255,255,255,0.06); text-align: center; box-shadow: var(--shadow); }
+    .gacha-gold { font-size: 1.5rem; font-weight: 700; color: var(--gold); margin-bottom: 0.5rem; display: flex; align-items: center; justify-content: center; gap: 0.5rem; }
+    .gacha-buttons { display: flex; flex-wrap: wrap; gap: 0.75rem; justify-content: center; margin-top: 0.75rem; }
+    .btn-gacha { padding: 0.85rem 1.5rem; border-radius: var(--radius); background: linear-gradient(145deg, var(--gold), #d97706); color: #1a1a1a; font-weight: 700; font-size: 0.9rem; border: none; cursor: pointer; font-family: inherit; transition: all 0.2s ease; box-shadow: 0 2px 8px rgba(202, 138, 4, 0.25); }
+    .btn-gacha:hover:not(:disabled) { transform: translateY(-2px); box-shadow: 0 4px 16px rgba(202, 138, 4, 0.35); }
+    .btn-gacha:disabled { opacity: 0.5; cursor: not-allowed; transform: none; }
+    .btn-gacha-premium { padding: 0.85rem 1.5rem; border-radius: var(--radius); background: linear-gradient(145deg, #a78bfa, #7c3aed); color: #fff; font-weight: 700; font-size: 0.9rem; border: none; cursor: pointer; font-family: inherit; transition: all 0.2s ease; box-shadow: 0 2px 8px rgba(167, 139, 250, 0.25); }
+    .btn-gacha-premium:hover:not(:disabled) { transform: translateY(-2px); box-shadow: 0 4px 16px rgba(167, 139, 250, 0.35); }
     .btn-gacha-premium:disabled { opacity: 0.5; cursor: not-allowed; }
     .gacha-cost { font-size: 0.78rem; color: var(--text-muted); margin-top: 0.35rem; }
     .share-card { background: var(--card); border-radius: var(--radius-lg); padding: 1.25rem; margin-bottom: 1rem; border: 1px solid rgba(255,255,255,0.06); text-align: center; }
@@ -591,7 +596,7 @@
     .payment-price { font-size: 0.7rem; color: var(--text-muted); }
     .btn-payment { padding: 0.45rem 0.75rem; font-size: 0.8rem; border-radius: 0.5rem; border: 1px solid rgba(255,255,255,0.15); background: rgba(255,255,255,0.06); color: var(--text-muted); cursor: not-allowed; font-family: inherit; }
 
-    /* 장비 강화 */
+    /* ?? ?? */
     .enhance-section { margin-bottom: 1rem; }
     .enhance-select { width: 100%; padding: 0.65rem; border-radius: var(--radius); border: 1px solid rgba(255,255,255,0.1); background: var(--bg-soft); color: var(--text); margin-bottom: 0.5rem; font-size: 0.9rem; }
     .btn-enhance { width: 100%; padding: 0.75rem; border-radius: var(--radius); background: linear-gradient(145deg, var(--rarity-epic), #7c3aed); color: #fff; font-weight: 600; border: none; cursor: pointer; font-family: inherit; }
@@ -610,7 +615,7 @@
     .equip-bonus-summary { font-size: 0.8rem; color: var(--text-muted); margin-top: 0.75rem; padding: 0.6rem; background: var(--bg-soft); border-radius: var(--radius); border: 1px solid rgba(255,255,255,0.06); }
     .equip-bonus-summary strong { color: var(--accent); }
 
-    /* 2D 캐릭터 인간형 - 부드러운 비율과 그림자 */
+    /* 2D ??? ??? - ???? ??? ??? */
     .avatar-human { width: 100px; height: 168px; margin: 0 auto; position: relative; filter: drop-shadow(0 4px 12px rgba(0,0,0,0.2)); }
     .avatar-human .ah-head { position: absolute; top: 0; left: 50%; transform: translateX(-50%); width: 38px; height: 38px; border-radius: 50%; box-shadow: inset -2px -1px 0 rgba(0,0,0,0.06), 0 2px 6px rgba(0,0,0,0.12); }
     .avatar-human .ah-face { position: absolute; top: 12px; left: 50%; transform: translateX(-50%); width: 24px; height: 10px; display: flex; justify-content: space-between; align-items: center; }
@@ -631,7 +636,7 @@
     .avatar-section .customize-section-title { font-size: 0.75rem; font-weight: 700; text-transform: uppercase; letter-spacing: 0.06em; color: var(--accent); margin: 1.25rem 0 0.5rem; padding-bottom: 0.35rem; border-bottom: 1px solid rgba(255,255,255,0.06); }
     .avatar-section .customize-section-title:first-of-type { margin-top: 0; }
 
-    /* 모바일 최적화 */
+    /* ??? ??? */
     @media (max-width: 480px) {
       .container { padding-left: 0.75rem; padding-right: 0.75rem; }
       header { padding-top: 0.5rem; }
@@ -668,30 +673,39 @@
     }
 
     /* ===== ??/?? ? ===== */
-    .social-tabs { display: flex; gap: 0.5rem; margin-bottom: 1rem; border-bottom: 1px solid rgba(255,255,255,0.1); }
-    .social-tab-btn { flex: 1; padding: 0.75rem; border: none; background: transparent; color: var(--text-muted); font-size: 0.9rem; font-weight: 500; cursor: pointer; border-bottom: 2px solid transparent; transition: all 0.2s; }
+    .social-tabs { display: flex; gap: 0.5rem; margin-bottom: 1.25rem; border-bottom: 2px solid rgba(255,255,255,0.08); }
+    .social-tab-btn { flex: 1; padding: 0.85rem 0.5rem; border: none; background: transparent; color: var(--text-muted); font-size: 0.9rem; font-weight: 500; cursor: pointer; border-bottom: 2px solid transparent; transition: all 0.2s ease; position: relative; }
     .social-tab-btn:hover { color: var(--text); }
     .social-tab-btn.active { color: var(--accent); border-bottom-color: var(--accent); font-weight: 600; }
     .social-content { animation: fadeIn 0.25s ease; }
-    .friend-item, .chat-item { display: flex; align-items: center; justify-content: space-between; padding: 0.75rem; background: var(--bg-soft); border-radius: var(--radius); margin-bottom: 0.5rem; border: 1px solid rgba(255,255,255,0.06); }
-    .friend-item:hover, .chat-item:hover { background: var(--card-hover); border-color: rgba(255,255,255,0.1); }
+    .friend-item, .chat-item { display: flex; align-items: center; justify-content: space-between; padding: 1rem; background: var(--bg-soft); border-radius: var(--radius); margin-bottom: 0.75rem; border: 1px solid rgba(255,255,255,0.06); transition: all 0.2s ease; }
+    .friend-item:hover, .chat-item:hover { background: var(--card-hover); border-color: rgba(255,255,255,0.12); transform: translateY(-1px); box-shadow: 0 4px 12px rgba(0,0,0,0.1); }
     .friend-info, .chat-info { flex: 1; min-width: 0; }
-    .friend-name, .chat-name { font-size: 0.9rem; font-weight: 600; color: var(--text); margin-bottom: 0.2rem; }
-    .friend-status, .chat-last-message { font-size: 0.75rem; color: var(--text-muted); }
-    .friend-actions, .chat-actions { display: flex; gap: 0.5rem; }
-    .btn-friend-action { padding: 0.4rem 0.8rem; border-radius: 0.5rem; border: none; font-size: 0.75rem; font-weight: 600; cursor: pointer; font-family: inherit; transition: transform 0.15s; }
-    .btn-friend-accept { background: linear-gradient(145deg, var(--accent), #10b981); color: var(--bg); }
-    .btn-friend-reject { background: rgba(248,113,113,0.25); color: #f87171; border: 1px solid rgba(248,113,113,0.4); }
+    .friend-name, .chat-name { font-size: 0.95rem; font-weight: 600; color: var(--text); margin-bottom: 0.3rem; }
+    .friend-status, .chat-last-message { font-size: 0.8rem; color: var(--text-muted); line-height: 1.4; }
+    .friend-actions, .chat-actions { display: flex; gap: 0.5rem; flex-shrink: 0; }
+    .btn-friend-action { padding: 0.5rem 1rem; border-radius: 0.6rem; border: none; font-size: 0.8rem; font-weight: 600; cursor: pointer; font-family: inherit; transition: all 0.2s ease; }
+    .btn-friend-accept { background: linear-gradient(145deg, var(--accent), #10b981); color: #ffffff; box-shadow: 0 2px 8px rgba(74, 222, 128, 0.25); }
+    .btn-friend-reject { background: rgba(248,113,113,0.15); color: #f87171; border: 1px solid rgba(248,113,113,0.3); }
     .btn-friend-chat { background: var(--accent-dim); color: var(--accent); border: 1px solid rgba(74,222,128,0.3); }
-    .btn-friend-action:hover:not(:disabled) { transform: translateY(-1px); }
-    .btn-friend-action:disabled { opacity: 0.5; cursor: not-allowed; }
-    .chat-message { padding: 0.75rem; margin-bottom: 0.5rem; border-radius: var(--radius); max-width: 80%; word-wrap: break-word; }
-    .chat-message.sent { background: var(--accent-dim); color: var(--text); margin-left: auto; text-align: right; }
-    .chat-message.received { background: var(--bg-soft); color: var(--text); }
-    .chat-message-time { font-size: 0.7rem; color: var(--text-muted); margin-top: 0.25rem; }
-    .chat-message.sent .chat-message-time { text-align: right; }
-    .party-member { display: flex; align-items: center; padding: 0.75rem; background: var(--bg-soft); border-radius: var(--radius); margin-bottom: 0.5rem; }
-    .party-member-leader { border: 1px solid var(--accent); background: var(--accent-dim); }
-    .party-member-name { font-size: 0.9rem; font-weight: 600; color: var(--text); }
-    .party-member-role { font-size: 0.75rem; color: var(--accent); margin-left: 0.5rem; }
-    .empty-state { text-align: center; padding: 2rem; color: var(--text-muted); font-size: 0.9rem; }
+    .btn-friend-action:hover:not(:disabled) { transform: translateY(-2px); box-shadow: 0 4px 12px rgba(0,0,0,0.15); }
+    .btn-friend-accept:hover:not(:disabled) { box-shadow: 0 4px 16px rgba(74, 222, 128, 0.35); }
+    .btn-friend-action:disabled { opacity: 0.5; cursor: not-allowed; transform: none; }
+    .chat-message { margin-bottom: 0.75rem; display: flex; flex-direction: column; max-width: 75%; }
+    .chat-message.sent { align-items: flex-end; margin-left: auto; }
+    .chat-message.received { align-items: flex-start; }
+    .chat-message-content { padding: 0.6rem 0.85rem; border-radius: 1rem; word-wrap: break-word; line-height: 1.4; display: inline-block; max-width: 100%; }
+    .chat-message.sent .chat-message-content { background: linear-gradient(135deg, var(--accent), #10b981); color: #ffffff; border-bottom-right-radius: 0.25rem; box-shadow: 0 2px 8px rgba(74, 222, 128, 0.25); }
+    .chat-message.received .chat-message-content { background: var(--bg-soft); color: var(--text); border-bottom-left-radius: 0.25rem; border: 1px solid rgba(255,255,255,0.08); }
+    .chat-message-time { font-size: 0.65rem; margin-top: 0.25rem; padding: 0 0.5rem; }
+    .chat-message.sent .chat-message-time { color: rgba(255,255,255,0.6); text-align: right; }
+    .chat-message.received .chat-message-time { color: var(--text-muted); text-align: left; }
+    #chatMessages { display: flex; flex-direction: column; gap: 0.25rem; }
+    .party-member { display: flex; align-items: center; justify-content: space-between; padding: 1rem; background: var(--bg-soft); border-radius: var(--radius); margin-bottom: 0.75rem; border: 1px solid rgba(255,255,255,0.06); transition: all 0.2s ease; }
+    .party-member:hover { background: var(--card-hover); border-color: rgba(255,255,255,0.12); }
+    .party-member-leader { border: 1px solid var(--accent); background: var(--accent-dim); box-shadow: 0 0 0 1px rgba(74, 222, 128, 0.2); }
+    .party-member-info { display: flex; align-items: center; flex: 1; }
+    .party-member-name { font-size: 0.95rem; font-weight: 600; color: var(--text); }
+    .party-member-role { font-size: 0.75rem; color: var(--accent); margin-left: 0.5rem; padding: 0.2rem 0.5rem; background: rgba(74, 222, 128, 0.15); border-radius: 0.4rem; font-weight: 600; }
+    .empty-state { text-align: center; padding: 2.5rem 1rem; color: var(--text-muted); font-size: 0.9rem; line-height: 1.6; }
+    .empty-state::before { content: '??'; display: block; font-size: 2.5rem; margin-bottom: 0.75rem; opacity: 0.5; }

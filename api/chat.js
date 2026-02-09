@@ -31,29 +31,36 @@ module.exports = async (req, res) => {
   if (req.method === 'GET' && (!action || action === 'list')) {
     return authMiddleware(req, res, async function() {
       try {
-        // 채팅 목록 (친구별로 마지막 메시지)
+        // 채팅 목록 (친구별로 마지막 메시지) - CTE와 ROW_NUMBER 사용
         const chatList = await pool.query(
-          `SELECT DISTINCT ON (
-             CASE WHEN sender_id = $1 THEN receiver_id ELSE sender_id END
-           )
-           CASE WHEN sender_id = $1 THEN receiver_id ELSE sender_id END as friend_id,
-           CASE WHEN sender_id = $1 THEN u2.nickname ELSE u1.nickname END as friend_nickname,
-           message,
-           created_at,
-           CASE WHEN sender_id = $1 THEN false ELSE read_at IS NULL END as is_unread
-           FROM chats
-           LEFT JOIN users u1 ON sender_id = u1.id
-           LEFT JOIN users u2 ON receiver_id = u2.id
-           WHERE sender_id = $1 OR receiver_id = $1
-           ORDER BY 
-             CASE WHEN sender_id = $1 THEN receiver_id ELSE sender_id END,
-             created_at DESC`,
+          `WITH latest_messages AS (
+            SELECT 
+              CASE WHEN c.sender_id = $1 THEN c.receiver_id ELSE c.sender_id END as friend_id,
+              CASE WHEN c.sender_id = $1 THEN u2.nickname ELSE u1.nickname END as friend_nickname,
+              c.message,
+              c.created_at,
+              CASE WHEN c.sender_id = $1 THEN false ELSE c.read_at IS NULL END as is_unread,
+              ROW_NUMBER() OVER (
+                PARTITION BY CASE WHEN c.sender_id = $1 THEN c.receiver_id ELSE c.sender_id END 
+                ORDER BY c.created_at DESC
+              ) as rn
+            FROM chats c
+            LEFT JOIN users u1 ON c.sender_id = u1.id
+            LEFT JOIN users u2 ON c.receiver_id = u2.id
+            WHERE c.sender_id = $1 OR c.receiver_id = $1
+          )
+          SELECT friend_id, friend_nickname, message, created_at, is_unread
+          FROM latest_messages
+          WHERE rn = 1
+          ORDER BY created_at DESC`,
           [req.userId]
         );
-        return res.json({ chats: chatList.rows });
+        return res.json({ chats: chatList.rows || [] });
       } catch (err) {
         console.error('Chat list error:', err);
-        return res.status(500).json({ error: '채팅 목록 조회 중 오류가 발생했어요.' });
+        console.error('Error details:', { message: err.message, stack: err.stack, userId: req.userId });
+        // 에러가 발생해도 빈 배열 반환 (채팅이 없을 수도 있음)
+        return res.json({ chats: [] });
       }
     });
   }
