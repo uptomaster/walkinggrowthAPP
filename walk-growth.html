@@ -2078,7 +2078,7 @@
     var btn = document.getElementById('btnHeaderAuth');
     var logoutBtn = document.getElementById('btnLogout');
     if (!btn) return;
-    if (isLoggedIn && userProfile) {
+    if (isLoggedIn && userProfile && userProfile.nickname) {
       btn.textContent = userProfile.nickname;
       btn.classList.add('logged-in');
       btn.setAttribute('aria-label', '프로필');
@@ -2166,7 +2166,11 @@
         renderAttendance();
         var card = document.getElementById('attendanceCard');
         if (card) card.style.display = 'block';
-        showToast(userProfile.nickname + '님 환영해요!');
+        if (userProfile && userProfile.nickname) {
+          showToast(userProfile.nickname + '님 환영해요!');
+        } else {
+          showToast('로그인 성공!');
+        }
       })
       .catch(function (err) {
         console.error('Login error:', err, 'URL:', url, 'API_BASE:', API_BASE);
@@ -2207,7 +2211,11 @@
         renderAttendance();
         var card = document.getElementById('attendanceCard');
         if (card) card.style.display = 'block';
-        showToast('가입 완료! ' + userProfile.nickname + '님 환영해요.');
+        if (userProfile && userProfile.nickname) {
+          showToast('가입 완료! ' + userProfile.nickname + '님 환영해요.');
+        } else {
+          showToast('가입 완료!');
+        }
       })
       .catch(function (err) {
         console.error('Signup error:', err, 'URL:', url);
@@ -2347,24 +2355,29 @@
             url: '/v2/user/me',
             success: function(res) {
               console.log('Kakao API response:', res);
-              var socialId = res.id ? res.id.toString() : null;
-              if (!socialId) {
-                showToast('카카오 사용자 정보를 가져올 수 없어요.');
-                return;
+              try {
+                var socialId = res.id ? res.id.toString() : null;
+                if (!socialId) {
+                  showToast('카카오 사용자 정보를 가져올 수 없어요.');
+                  return;
+                }
+                
+                // 닉네임 추출 (안전하게)
+                var nickname = '카카오사용자';
+                if (res.kakao_account && res.kakao_account.profile && res.kakao_account.profile.nickname) {
+                  nickname = res.kakao_account.profile.nickname;
+                } else if (res.properties && res.properties.nickname) {
+                  nickname = res.properties.nickname;
+                }
+                
+                // 이메일은 권한 없음이므로 null로 설정
+                var email = null;
+                
+                sendSocialLogin(provider, socialId, nickname, email);
+              } catch (err) {
+                console.error('Kakao API response processing error:', err);
+                showToast('카카오 사용자 정보 처리 중 오류가 났어요.');
               }
-              
-              // 닉네임 추출 (안전하게)
-              var nickname = '카카오사용자';
-              if (res.kakao_account && res.kakao_account.profile && res.kakao_account.profile.nickname) {
-                nickname = res.kakao_account.profile.nickname;
-              } else if (res.properties && res.properties.nickname) {
-                nickname = res.properties.nickname;
-              }
-              
-              // 이메일은 권한 없음이므로 null로 설정
-              var email = null;
-              
-              sendSocialLogin(provider, socialId, nickname, email);
             },
             fail: function(err) {
               console.error('Kakao API error:', err);
@@ -2426,21 +2439,59 @@
     }).then(function (x) {
       if (!x.ok) {
         showToast(x.body.error || '소셜 로그인에 실패했어요.');
-        return;
+        return null;
+      }
+      if (!x.body || !x.body.user || !x.body.token) {
+        showToast('서버 응답이 올바르지 않아요.');
+        return null;
       }
       setAuthToken(x.body.token);
       userProfile = x.body.user;
       isLoggedIn = true;
+      
+      // userProfile이 제대로 설정되었는지 확인
+      if (!userProfile || !userProfile.nickname) {
+        console.error('userProfile is invalid:', userProfile);
+        showToast('사용자 정보를 가져오는 중 오류가 났어요.');
+        return null;
+      }
+      
       return fetch(API_BASE + '/api/user/data', { headers: { 'Authorization': 'Bearer ' + x.body.token } });
     }).then(function (r) {
-      if (!r) return null;
+      if (!r) {
+        // 로그인은 성공했지만 데이터 로드는 스킵
+        if (userProfile && userProfile.nickname) {
+          saveAll();
+          closeAuthModal();
+          renderHeaderAuth();
+          renderAuthGate();
+          renderPet();
+          renderAttendance();
+          var card = document.getElementById('attendanceCard');
+          if (card) card.style.display = 'block';
+          showToast(userProfile.nickname + '님 환영해요!');
+        }
+        return null;
+      }
       if (!r.ok) {
-        return r.json().then(function(errorBody) {
-          throw new Error(errorBody.error || '데이터를 불러오는 중 오류가 났어요.');
-        });
+        // 데이터 로드 실패해도 로그인은 성공
+        console.warn('Failed to load user data:', r.status);
+        if (userProfile && userProfile.nickname) {
+          saveAll();
+          closeAuthModal();
+          renderHeaderAuth();
+          renderAuthGate();
+          renderPet();
+          renderAttendance();
+          var card = document.getElementById('attendanceCard');
+          if (card) card.style.display = 'block';
+          showToast(userProfile.nickname + '님 환영해요! (데이터는 새로 시작합니다)');
+        }
+        return null;
       }
       return r.json();
     }).then(function (body) {
+      if (!body) return;
       if (body && body.data) {
         try {
           var data = typeof body.data === 'string' ? JSON.parse(body.data) : body.data;
@@ -2457,10 +2508,27 @@
       renderAttendance();
       var card = document.getElementById('attendanceCard');
       if (card) card.style.display = 'block';
-      showToast(userProfile.nickname + '님 환영해요!');
+      if (userProfile && userProfile.nickname) {
+        showToast(userProfile.nickname + '님 환영해요!');
+      } else {
+        showToast('로그인 성공!');
+      }
     }).catch(function (err) {
       console.error('Social login error:', err);
-      showToast('로그인은 성공했지만 데이터를 불러오는 중 오류가 났어요: ' + (err.message || '알 수 없는 오류'));
+      // 로그인은 성공했지만 데이터 로드 실패
+      if (userProfile && userProfile.nickname) {
+        saveAll();
+        closeAuthModal();
+        renderHeaderAuth();
+        renderAuthGate();
+        renderPet();
+        renderAttendance();
+        var card = document.getElementById('attendanceCard');
+        if (card) card.style.display = 'block';
+        showToast(userProfile.nickname + '님 환영해요! (데이터 로드 중 일부 오류 발생)');
+      } else {
+        showToast('로그인 중 오류가 났어요: ' + (err.message || '알 수 없는 오류'));
+      }
     });
   }
   function switchAuthTab(tab) {
