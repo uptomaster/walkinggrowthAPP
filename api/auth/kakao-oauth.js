@@ -16,6 +16,11 @@ const getRedirectUri = (req) => {
 
 // 카카오 OAuth 시작 (리다이렉트 URL 반환)
 const start = async (req, res) => {
+  // CORS 헤더 설정
+  res.setHeader('Access-Control-Allow-Origin', '*');
+  res.setHeader('Access-Control-Allow-Methods', 'GET, POST, OPTIONS');
+  res.setHeader('Access-Control-Allow-Headers', 'Content-Type, Authorization, Accept');
+  
   try {
     const state = Math.random().toString(36).substring(2, 15);
     const redirectUri = getRedirectUri(req);
@@ -157,6 +162,16 @@ const callback = async (req, res) => {
 
 // Vercel 서버리스 함수: 경로에 따라 start 또는 callback 호출
 module.exports = async (req, res) => {
+  // CORS 헤더 설정 (모든 요청에 적용)
+  res.setHeader('Access-Control-Allow-Origin', '*');
+  res.setHeader('Access-Control-Allow-Methods', 'GET, POST, OPTIONS');
+  res.setHeader('Access-Control-Allow-Headers', 'Content-Type, Authorization, Accept');
+  res.setHeader('Access-Control-Max-Age', '86400');
+  
+  if (req.method === 'OPTIONS') {
+    return res.status(200).end();
+  }
+  
   try {
     // Vercel rewrites를 통해 들어온 경우 원본 URL 확인
     const originalUrl = req.headers['x-vercel-original-path'] || req.url || req.path || '';
@@ -168,6 +183,7 @@ module.exports = async (req, res) => {
       path: req.path,
       originalUrl: originalUrl,
       query: req.query,
+      method: req.method,
       headers: {
         'x-vercel-original-path': req.headers['x-vercel-original-path'],
         origin: req.headers.origin,

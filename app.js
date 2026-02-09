@@ -12,52 +12,30 @@
     (navigator.userAgent && navigator.userAgent.includes('Capacitor')) ||
     (navigator.userAgent && navigator.userAgent.includes('Android') && !navigator.userAgent.includes('Chrome/') && typeof location !== 'undefined' && location.hostname === 'localhost');
   
-  if (isMobileApp) {
-    // 모바일 앱에서는 항상 Vercel URL 사용
-    API_BASE = 'https://walkinggrowth-app.vercel.app';
-    console.log('모바일 앱 감지됨 - Vercel URL 사용:', {
-      isCapacitorApp: isCapacitorApp,
-      protocol: typeof location !== 'undefined' ? location.protocol : 'N/A',
-      hostname: typeof location !== 'undefined' ? location.hostname : 'N/A',
-      userAgent: navigator.userAgent
-    });
-  } else if (typeof location !== 'undefined') {
-    if (location.protocol === 'file:') {
+  // API_BASE 설정: 기본값은 Vercel 배포 서버
+  API_BASE = 'https://walkinggrowth-app.vercel.app';
+  
+  // 개발 중에만 로컬 사용 (웹 브라우저에서만, 모바일 앱이 아닐 때)
+  if (!isMobileApp && !isCapacitorApp && typeof location !== 'undefined') {
+    if (location.hostname === 'localhost' || location.hostname === '127.0.0.1') {
+      // 웹 브라우저에서 localhost 접속 시에만 로컬 서버 사용
       API_BASE = 'http://localhost:3000';
-    } else if (location.hostname === 'localhost' || location.hostname === '127.0.0.1') {
-      // localhost 접속 시: 추가로 모바일 앱인지 확인
-      // Android WebView는 Chrome이 아닌 경우가 많음
-      var isAndroidApp = navigator.userAgent && 
-        navigator.userAgent.includes('Android') && 
-        !navigator.userAgent.includes('Chrome/') &&
-        !navigator.userAgent.includes('Version/');
-      
-      if (isAndroidApp || isCapacitorApp) {
-        // 모바일 앱에서는 Vercel URL 사용
-        API_BASE = 'https://walkinggrowth-app.vercel.app';
-        console.log('localhost 접속이지만 모바일 앱으로 감지됨 - Vercel URL 사용');
-      } else {
-        // 웹 브라우저에서 localhost 접속 시에만 로컬 서버 사용
-        API_BASE = 'http://localhost:3000';
-      }
-    } else {
-      // 웹 브라우저에서는 현재 도메인 사용
+    } else if (location.protocol !== 'file:' && location.origin) {
+      // 배포된 웹에서는 현재 도메인 사용
       API_BASE = location.origin;
     }
-  } else {
-    // location이 없는 경우 - 모바일 앱일 가능성이 높음
-    API_BASE = 'https://walkinggrowth-app.vercel.app';
   }
   
-  console.log('API_BASE 설정 완료:', {
-    API_BASE: API_BASE,
-    location: typeof location !== 'undefined' ? location.href : 'N/A',
-    protocol: typeof location !== 'undefined' ? location.protocol : 'N/A',
-    hostname: typeof location !== 'undefined' ? location.hostname : 'N/A',
+  // 최종 API_BASE 로그 출력 (디버깅용)
+  console.log('[API] 최종 결정된 API_BASE:', API_BASE);
+  console.log('[API] 현재 환경 감지:', {
     isCapacitorApp: isCapacitorApp,
     isMobileApp: isMobileApp,
-    Capacitor: typeof window !== 'undefined' && window.Capacitor !== undefined,
-    userAgent: navigator.userAgent
+    protocol: typeof location !== 'undefined' ? location.protocol : 'N/A',
+    hostname: typeof location !== 'undefined' ? location.hostname : 'N/A',
+    userAgent: navigator.userAgent,
+    online: navigator.onLine,
+    Capacitor: typeof window !== 'undefined' && window.Capacitor !== undefined
   });
   const TOKEN_KEY = 'walk_token';
   function getAuthToken() { try { return localStorage.getItem(TOKEN_KEY); } catch (e) { return null; } }
@@ -673,14 +651,26 @@
     var payload = getGameStatePayload();
     fetch(API_BASE + '/api/user/data', {
       method: 'POST',
-      headers: { 'Content-Type': 'application/json', 'Authorization': 'Bearer ' + token },
-      body: JSON.stringify(payload)
+      headers: { 
+        'Content-Type': 'application/json', 
+        'Authorization': 'Bearer ' + token,
+        'Accept': 'application/json'
+      },
+      body: JSON.stringify(payload),
+      mode: 'cors',
+      credentials: 'omit',
+      cache: 'no-cache'
     }).catch(function () {});
   }
   function initAuth() {
     var token = getAuthToken();
     if (!token) return Promise.resolve();
-    return fetch(API_BASE + '/api/user/me', { headers: { 'Authorization': 'Bearer ' + token } })
+    return fetch(API_BASE + '/api/user/me', { 
+      headers: { 'Authorization': 'Bearer ' + token },
+      mode: 'cors',
+      credentials: 'omit',
+      cache: 'no-cache'
+    })
       .then(function (r) {
         if (!r.ok) { clearAuthToken(); return null; }
         return r.json();
@@ -689,7 +679,12 @@
         if (!me) return null;
         userProfile = { id: me.id, nickname: me.nickname };
         isLoggedIn = true;
-        return fetch(API_BASE + '/api/user/data', { headers: { 'Authorization': 'Bearer ' + token } });
+        return fetch(API_BASE + '/api/user/data', { 
+          headers: { 'Authorization': 'Bearer ' + token },
+          mode: 'cors',
+          credentials: 'omit',
+          cache: 'no-cache'
+        });
       })
       .then(function (r) {
         if (!r) return null;
@@ -1692,6 +1687,9 @@
         },
         mode: 'cors',
         credentials: 'omit',
+        cache: 'no-cache',
+        redirect: 'follow',
+        referrerPolicy: 'no-referrer',
         body: JSON.stringify({ 
           nickname: nick, 
           password: password,
@@ -1739,7 +1737,13 @@
       
       // 사용자 데이터 로드
       return fetch(API_BASE + '/api/user/data', { 
-        headers: { 'Authorization': 'Bearer ' + x.body.token } 
+        headers: { 
+          'Authorization': 'Bearer ' + x.body.token,
+          'Accept': 'application/json'
+        },
+        mode: 'cors',
+        credentials: 'omit',
+        cache: 'no-cache'
       });
     })
     .then(function(r) {
@@ -1810,6 +1814,9 @@
         },
         mode: 'cors',
         credentials: 'omit',
+        cache: 'no-cache',
+        redirect: 'follow',
+        referrerPolicy: 'no-referrer',
         body: JSON.stringify({ nickname: nickname, password: password })
       }),
       timeoutPromise
@@ -1992,7 +1999,10 @@
       },
       body: JSON.stringify({ nickname: nick, password: pw }),
       mode: 'cors',
-      credentials: 'omit'
+      credentials: 'omit',
+      cache: 'no-cache',
+      redirect: 'follow',
+      referrerPolicy: 'no-referrer'
     };
     
     // 모바일 앱에서는 추가 헤더 설정
@@ -2034,7 +2044,12 @@
         setAuthToken(x.body.token);
         userProfile = x.body.user;
         isLoggedIn = true;
-        return fetch(API_BASE + '/api/user/data', { headers: { 'Authorization': 'Bearer ' + x.body.token } });
+        return fetch(API_BASE + '/api/user/data', { 
+          headers: { 'Authorization': 'Bearer ' + x.body.token },
+          mode: 'cors',
+          credentials: 'omit',
+          cache: 'no-cache'
+        });
       })
       .then(function (r) {
         if (!r) return;
@@ -2112,8 +2127,16 @@
     console.log('Signup attempt:', { url: url, API_BASE: API_BASE });
     fetch(url, {
       method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ nickname: nick, password: pw, email: email })
+      headers: { 
+        'Content-Type': 'application/json',
+        'Accept': 'application/json'
+      },
+      body: JSON.stringify({ nickname: nick, password: pw, email: email }),
+      mode: 'cors',
+      credentials: 'omit',
+      cache: 'no-cache',
+      redirect: 'follow',
+      referrerPolicy: 'no-referrer'
     }).then(function (r) {
       console.log('Signup response status:', r.status);
       if (!r.ok) {
@@ -2191,8 +2214,14 @@
     var url = API_BASE + '/api/auth/find-id';
     fetch(url, {
       method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ email: email })
+      headers: { 
+        'Content-Type': 'application/json',
+        'Accept': 'application/json'
+      },
+      body: JSON.stringify({ email: email }),
+      mode: 'cors',
+      credentials: 'omit',
+      cache: 'no-cache'
     }).then(function (r) {
       if (!r.ok) {
         return r.text().then(function (text) {
@@ -2229,8 +2258,14 @@
     var url = API_BASE + '/api/auth/reset-password-request';
     fetch(url, {
       method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ email: email })
+      headers: { 
+        'Content-Type': 'application/json',
+        'Accept': 'application/json'
+      },
+      body: JSON.stringify({ email: email }),
+      mode: 'cors',
+      credentials: 'omit',
+      cache: 'no-cache'
     }).then(function (r) {
       if (!r.ok) {
         return r.text().then(function (text) {
@@ -2278,8 +2313,14 @@
     var url = API_BASE + '/api/auth/reset-password';
     fetch(url, {
       method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ token: token, newPassword: pw })
+      headers: { 
+        'Content-Type': 'application/json',
+        'Accept': 'application/json'
+      },
+      body: JSON.stringify({ token: token, newPassword: pw }),
+      mode: 'cors',
+      credentials: 'omit',
+      cache: 'no-cache'
     }).then(function (r) {
       if (!r.ok) {
         return r.text().then(function (text) {
@@ -2325,7 +2366,10 @@
               'Accept': 'application/json'
             },
             mode: 'cors',
-            credentials: 'omit'
+            credentials: 'omit',
+            cache: 'no-cache',
+            redirect: 'follow',
+            referrerPolicy: 'no-referrer'
           }),
           timeoutPromise
         ])
@@ -2395,105 +2439,6 @@
             }
           }
           showToast(errorMsg);
-        });
-        
-        return;
-      }
-      
-      // 웹 브라우저에서는 JavaScript SDK 사용
-      if (typeof Kakao === 'undefined' || !Kakao.Auth) {
-        showToast('카카오 SDK를 불러올 수 없어요. 페이지를 새로고침해 주세요.');
-        return;
-      }
-      
-      // URL 스킴으로 돌아올 때 처리
-      // 앱이 다시 활성화될 때 URL 확인
-      var handleAppResume = function() {
-            console.log('App resumed, checking for OAuth callback');
-            // 잠시 후 URL 확인 (앱이 완전히 로드된 후)
-            setTimeout(function() {
-              if (window.location && window.location.href) {
-                var href = window.location.href;
-                console.log('Current URL:', href);
-                if (href.includes('walkstory://oauth') || href.includes('oauth')) {
-                  var url;
-                  try {
-                    url = new URL(href);
-                  } catch (e) {
-                    // URL 파싱 실패 시 수동 파싱
-                    var match = href.match(/[?&]token=([^&]+)/);
-                    var token = match ? decodeURIComponent(match[1]) : null;
-                    var errorMatch = href.match(/[?&]error=([^&]+)/);
-                    var error = errorMatch ? decodeURIComponent(errorMatch[1]) : null;
-                    
-                    if (error) {
-                      hideAuthLoading();
-                      showToast('카카오 로그인에 실패했어요: ' + error);
-                      return;
-                    }
-                    
-                    if (token) {
-                      setAuthToken(token);
-                      var userIdMatch = href.match(/[?&]userId=([^&]+)/);
-                      var nicknameMatch = href.match(/[?&]nickname=([^&]+)/);
-                      var userId = userIdMatch ? parseInt(userIdMatch[1]) : null;
-                      var nickname = nicknameMatch ? decodeURIComponent(nicknameMatch[1]) : '사용자';
-                      
-                      userProfile = { id: userId, nickname: nickname };
-                      isLoggedIn = true;
-                      hideAuthLoading();
-                      closeAuthModal();
-                      renderAuthGate();
-                      loadGameState();
-                      showToast('카카오 로그인 성공!');
-                    }
-                    return;
-                  }
-                  
-                  var token = url.searchParams.get('token');
-                  var error = url.searchParams.get('error');
-                  
-                  if (error) {
-                    hideAuthLoading();
-                    showToast('카카오 로그인에 실패했어요: ' + error);
-                    return;
-                  }
-                  
-                  if (token) {
-                    setAuthToken(token);
-                    var userId = url.searchParams.get('userId');
-                    var nickname = url.searchParams.get('nickname');
-                    userProfile = { id: parseInt(userId), nickname: decodeURIComponent(nickname) };
-                    isLoggedIn = true;
-                    hideAuthLoading();
-                    closeAuthModal();
-                    renderAuthGate();
-                    loadGameState();
-                    showToast('카카오 로그인 성공!');
-                  }
-                }
-              }
-            }, 1000);
-          };
-          
-          // 앱 포커스 이벤트 리스너
-          window.addEventListener('focus', handleAppResume);
-          document.addEventListener('visibilitychange', function() {
-            if (!document.hidden) {
-              handleAppResume();
-            }
-          });
-          
-          // 5분 후 타임아웃
-          setTimeout(function() {
-            window.removeEventListener('focus', handleAppResume);
-            hideAuthLoading();
-          }, 300000);
-        })
-        .catch(function(err) {
-          console.error('Kakao OAuth start error:', err);
-          hideAuthLoading();
-          showToast('카카오 로그인 시작에 실패했어요.');
         });
         
         return;
@@ -2627,8 +2572,16 @@
     
     return fetch(url, {
       method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ provider: provider, socialId: socialId, nickname: nickname, email: email })
+      headers: { 
+        'Content-Type': 'application/json',
+        'Accept': 'application/json'
+      },
+      body: JSON.stringify({ provider: provider, socialId: socialId, nickname: nickname, email: email }),
+      mode: 'cors',
+      credentials: 'omit',
+      cache: 'no-cache',
+      redirect: 'follow',
+      referrerPolicy: 'no-referrer'
     }).then(function (r) {
       console.log('Social login response status:', r.status);
       if (!r.ok) {
@@ -3883,7 +3836,13 @@
     } catch (e) {}
     
     fetch(API_BASE + '/api/party?action=walking-status', {
-      headers: { 'Authorization': 'Bearer ' + token }
+      headers: { 
+        'Authorization': 'Bearer ' + token,
+        'Accept': 'application/json'
+      },
+      mode: 'cors',
+      credentials: 'omit',
+      cache: 'no-cache'
     })
     .then(function(res) { return res.json(); })
     .then(function(data) {
@@ -3919,7 +3878,13 @@
       return;
     }
     fetch(API_BASE + '/api/friends?action=search&nickname=' + encodeURIComponent(query), {
-      headers: { 'Authorization': 'Bearer ' + token }
+      headers: { 
+        'Authorization': 'Bearer ' + token,
+        'Accept': 'application/json'
+      },
+      mode: 'cors',
+      credentials: 'omit',
+      cache: 'no-cache'
     })
     .then(function(res) { return res.json(); })
     .then(function(data) {
@@ -4001,7 +3966,13 @@
       return;
     }
     fetch(API_BASE + '/api/friends', {
-      headers: { 'Authorization': 'Bearer ' + token }
+      headers: { 
+        'Authorization': 'Bearer ' + token,
+        'Accept': 'application/json'
+      },
+      mode: 'cors',
+      credentials: 'omit',
+      cache: 'no-cache'
     })
     .then(function(res) { return res.json(); })
     .then(function(data) {
@@ -4135,7 +4106,13 @@
       return;
     }
     fetch(API_BASE + '/api/chat', {
-      headers: { 'Authorization': 'Bearer ' + token }
+      headers: { 
+        'Authorization': 'Bearer ' + token,
+        'Accept': 'application/json'
+      },
+      mode: 'cors',
+      credentials: 'omit',
+      cache: 'no-cache'
     })
     .then(function(res) { return res.json(); })
     .then(function(data) {
@@ -4194,7 +4171,13 @@
     var token = getAuthToken();
     if (!token) return;
     fetch(API_BASE + '/api/chat?action=messages&friendId=' + friendId, {
-      headers: { 'Authorization': 'Bearer ' + token }
+      headers: { 
+        'Authorization': 'Bearer ' + token,
+        'Accept': 'application/json'
+      },
+      mode: 'cors',
+      credentials: 'omit',
+      cache: 'no-cache'
     })
     .then(function(res) { return res.json(); })
     .then(function(data) {
@@ -4281,7 +4264,13 @@
       return;
     }
     fetch(API_BASE + '/api/party', {
-      headers: { 'Authorization': 'Bearer ' + token }
+      headers: { 
+        'Authorization': 'Bearer ' + token,
+        'Accept': 'application/json'
+      },
+      mode: 'cors',
+      credentials: 'omit',
+      cache: 'no-cache'
     })
     .then(function(res) { return res.json(); })
     .then(function(data) {
@@ -4390,9 +4379,13 @@
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
-        'Authorization': 'Bearer ' + token
+        'Authorization': 'Bearer ' + token,
+        'Accept': 'application/json'
       },
-      body: JSON.stringify({ action: 'create' })
+      body: JSON.stringify({ action: 'create' }),
+      mode: 'cors',
+      credentials: 'omit',
+      cache: 'no-cache'
     })
     .then(function(res) { return res.json(); })
     .then(function(data) {
@@ -4507,7 +4500,13 @@
       // 친구 프로필 조회
       var token = getAuthToken();
       fetch(API_BASE + '/api/user/data?action=profile&userId=' + friendId, {
-        headers: { 'Authorization': 'Bearer ' + token }
+        headers: { 
+          'Authorization': 'Bearer ' + token,
+          'Accept': 'application/json'
+        },
+        mode: 'cors',
+        credentials: 'omit',
+        cache: 'no-cache'
       })
       .then(function(res) {
         if (!res.ok) {
@@ -4611,7 +4610,13 @@
     
     // 친구 목록 가져오기
     fetch(API_BASE + '/api/friends', {
-      headers: { 'Authorization': 'Bearer ' + token }
+      headers: { 
+        'Authorization': 'Bearer ' + token,
+        'Accept': 'application/json'
+      },
+      mode: 'cors',
+      credentials: 'omit',
+      cache: 'no-cache'
     })
     .then(function(res) { return res.json(); })
     .then(function(data) {
