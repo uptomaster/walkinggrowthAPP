@@ -17,21 +17,19 @@ module.exports = async (req, res) => {
     if (nick.length < 2) {
       return res.status(400).json({ error: '닉네임은 2자 이상이에요.' });
     }
+    if (!emailTrimmed || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(emailTrimmed)) {
+      return res.status(400).json({ error: '올바른 이메일을 입력해 주세요.' });
+    }
     if (pw.length < 6) {
       return res.status(400).json({ error: '비밀번호는 6자 이상이에요.' });
-    }
-    if (emailTrimmed && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(emailTrimmed)) {
-      return res.status(400).json({ error: '올바른 이메일 형식이 아니에요.' });
     }
     const existing = await findUserByNickname(nick);
     if (existing) {
       return res.status(409).json({ error: '이미 사용 중인 닉네임이에요.' });
     }
-    if (emailTrimmed) {
-      const existingEmail = await findUserByEmail(emailTrimmed);
-      if (existingEmail) {
-        return res.status(409).json({ error: '이미 사용 중인 이메일이에요.' });
-      }
+    const existingEmail = await findUserByEmail(emailTrimmed);
+    if (existingEmail) {
+      return res.status(409).json({ error: '이미 사용 중인 이메일이에요.' });
     }
     const passwordHash = await bcrypt.hash(pw, SALT_ROUNDS);
     const userId = await createUser(nick, passwordHash, emailTrimmed);

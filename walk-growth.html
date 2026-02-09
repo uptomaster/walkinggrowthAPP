@@ -10,7 +10,8 @@
   <meta name="apple-mobile-web-app-title" content="WalkStory">
   <title>WalkStory · 걸음으로 키우는 나만의 동물 친구</title>
   <link rel="manifest" href="manifest.json">
-  <link rel="apple-touch-icon" href="icon.svg">
+  <link rel="icon" type="image/png" href="walkstory-logo.png">
+  <link rel="apple-touch-icon" href="walkstory-logo.png">
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;500;600;700&display=swap" rel="stylesheet">
@@ -845,8 +846,8 @@
         <div id="authSignupPanel" class="auth-panel" style="display:none;">
           <label>닉네임</label>
           <input type="text" id="authSignupNick" placeholder="2~12자" maxlength="12" inputmode="text" autocomplete="username" />
-          <label>이메일 (선택)</label>
-          <input type="email" id="authSignupEmail" placeholder="example@email.com" inputmode="email" autocomplete="email" />
+          <label>이메일 <span style="color: #ef4444;">*</span></label>
+          <input type="email" id="authSignupEmail" placeholder="example@email.com" required inputmode="email" autocomplete="email" />
           <label>비밀번호</label>
           <input type="password" id="authSignupPw" placeholder="6자 이상" autocomplete="new-password" />
           <label>비밀번호 확인</label>
@@ -2178,14 +2179,14 @@
     var pw = (document.getElementById('authSignupPw') || {}).value;
     var pw2 = (document.getElementById('authSignupPw2') || {}).value;
     if (!nick || nick.length < 2) { showToast('닉네임은 2자 이상이에요.'); return; }
+    if (!email || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) { showToast('올바른 이메일을 입력해 주세요.'); return; }
     if (!pw || pw.length < 6) { showToast('비밀번호는 6자 이상이에요.'); return; }
     if (pw !== pw2) { showToast('비밀번호가 일치하지 않아요.'); return; }
-    if (email && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) { showToast('올바른 이메일 형식이 아니에요.'); return; }
     var url = API_BASE + '/api/auth/signup';
     fetch(url, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ nickname: nick, password: pw, email: email || null })
+      body: JSON.stringify({ nickname: nick, password: pw, email: email })
     }).then(function (r) {
       if (!r.ok) {
         return r.text().then(function (text) {
@@ -2339,7 +2340,8 @@
         return;
       }
       Kakao.Auth.login({
-        scope: 'profile_nickname,account_email', // 닉네임과 이메일 동의 요청
+        // 닉네임만 요청 (이메일은 권한 없음 상태이므로 제외)
+        scope: 'profile_nickname',
         success: function(authObj) {
           Kakao.API.request({
             url: '/v2/user/me',
@@ -2353,23 +2355,14 @@
               
               // 닉네임 추출 (안전하게)
               var nickname = '카카오사용자';
-              if (res.kakao_account) {
-                if (res.kakao_account.profile && res.kakao_account.profile.nickname) {
-                  nickname = res.kakao_account.profile.nickname;
-                } else if (res.kakao_account.profile_nickname) {
-                  nickname = res.kakao_account.profile_nickname;
-                } else if (res.properties && res.properties.nickname) {
-                  nickname = res.properties.nickname;
-                }
+              if (res.kakao_account && res.kakao_account.profile && res.kakao_account.profile.nickname) {
+                nickname = res.kakao_account.profile.nickname;
               } else if (res.properties && res.properties.nickname) {
                 nickname = res.properties.nickname;
               }
               
-              // 이메일 추출 (안전하게)
+              // 이메일은 권한 없음이므로 null로 설정
               var email = null;
-              if (res.kakao_account && res.kakao_account.email) {
-                email = res.kakao_account.email;
-              }
               
               sendSocialLogin(provider, socialId, nickname, email);
             },
