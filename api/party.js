@@ -92,11 +92,15 @@ module.exports = async (req, res) => {
           if (existingParty.rows.length > 0) {
             return res.status(400).json({ error: '이미 파티에 속해있어요.' });
           }
-          // 새 파티 생성
+          // 새 파티 생성 - member_ids를 빈 배열로 시작 (리더는 leader_id에만 포함)
+          const userIdInt = parseInt(req.userId, 10);
+          if (isNaN(userIdInt)) {
+            return res.status(400).json({ error: '올바른 사용자 ID가 필요해요.' });
+          }
           const result = await pool.query(
             `INSERT INTO parties (leader_id, member_ids) 
-             VALUES ($1, ARRAY[$1]) RETURNING id, leader_id, member_ids`,
-            [req.userId]
+             VALUES ($1, '{}'::integer[]) RETURNING id, leader_id, member_ids`,
+            [userIdInt]
           );
           return res.json({ 
             success: true, 
@@ -180,8 +184,19 @@ module.exports = async (req, res) => {
         return res.status(400).json({ error: '올바른 액션을 입력해 주세요.' });
       } catch (err) {
         console.error('Party action error:', err);
-        console.error('Error details:', { message: err.message, stack: err.stack, body: req.body });
-        return res.status(500).json({ error: '파티 처리 중 오류가 발생했어요.' });
+        console.error('Error details:', { 
+          message: err.message, 
+          stack: err.stack, 
+          body: req.body,
+          userId: req.userId,
+          code: err.code,
+          detail: err.detail,
+          constraint: err.constraint
+        });
+        return res.status(500).json({ 
+          error: '파티 처리 중 오류가 발생했어요.',
+          details: process.env.NODE_ENV === 'development' ? err.message : undefined
+        });
       }
     });
   }
