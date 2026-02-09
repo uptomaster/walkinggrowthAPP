@@ -470,6 +470,42 @@
     .avatar-section .customize-row label { display: block; font-size: 0.8rem; font-weight: 600; color: var(--text-muted); margin-bottom: 0.4rem; }
     .avatar-section .customize-section-title { font-size: 0.75rem; font-weight: 700; text-transform: uppercase; letter-spacing: 0.06em; color: var(--accent); margin: 1.25rem 0 0.5rem; padding-bottom: 0.35rem; border-bottom: 1px solid rgba(255,255,255,0.06); }
     .avatar-section .customize-section-title:first-of-type { margin-top: 0; }
+
+    /* 모바일 최적화 */
+    @media (max-width: 480px) {
+      .container { padding-left: 0.75rem; padding-right: 0.75rem; }
+      header { padding-top: 0.5rem; }
+      h1 { font-size: 1.3rem; }
+      .step-value { font-size: 2.75rem; }
+      .btn-add { width: 64px; height: 64px; font-size: 1.8rem; }
+      .tab-btn { min-width: 2.5rem; padding: 0.5rem 0.25rem; font-size: 0.7rem; }
+      .tab-btn .tab-emoji { font-size: 1.25rem; }
+      .step-card, .walk-card, .avatar-section, .story-section { padding: 1.25rem; }
+      .auth-modal { padding: 1.25rem; max-width: 100%; }
+      .btn-auth-submit, .btn-gacha, .btn-gacha-premium, .btn-share, .btn-attendance { min-height: 44px; padding: 0.75rem; }
+      .btn-reset, .btn-claim { min-height: 36px; padding: 0.5rem 0.9rem; }
+      .header-auth-btn { min-height: 36px; padding: 0.4rem 0.6rem; font-size: 0.75rem; }
+      .theme-toggle { width: 40px; height: 40px; }
+      input[type="text"], input[type="password"], input[type="number"], select { min-height: 44px; font-size: 16px; }
+      .inv-item { min-height: 80px; }
+      .equipped-slot { min-height: 5rem; }
+    }
+    @media (hover: none) and (pointer: coarse) {
+      .btn-add:hover, .btn-reset:hover, .tab-btn:hover, .header-auth-btn:hover { transform: none; }
+      .btn-add:active { transform: scale(0.95); }
+      .btn-reset:active, .tab-btn:active { opacity: 0.7; }
+    }
+    html { -webkit-overflow-scrolling: touch; height: 100%; }
+    body { -webkit-tap-highlight-color: transparent; height: 100%; overflow-y: auto; }
+    button, a, input, select, .tab-btn, .inv-item, .equipped-slot { -webkit-tap-highlight-color: rgba(255,255,255,0.1); touch-action: manipulation; }
+    input, textarea, select { font-size: 16px; }
+    @supports (-webkit-touch-callout: none) {
+      input, textarea, select { font-size: 16px; }
+    }
+    @media (max-width: 480px) {
+      .auth-overlay { padding: 0.5rem; align-items: flex-start; padding-top: max(1rem, env(safe-area-inset-top)); }
+      .auth-modal { margin-top: auto; margin-bottom: auto; max-height: calc(100vh - 2rem); overflow-y: auto; }
+    }
   </style>
 </head>
 <body data-theme="night">
@@ -549,9 +585,9 @@
         </div>
         <div class="route-create-card" id="routeCreateCard" style="display:none;">
           <label class="course-label">코스 이름</label>
-          <input type="text" id="newRouteName" placeholder="예: 동네 한 바퀴" class="course-input" maxlength="20" />
+          <input type="text" id="newRouteName" placeholder="예: 동네 한 바퀴" class="course-input" maxlength="20" inputmode="text" />
           <label class="course-label">목표 거리 (km, 최소 0.5)</label>
-          <input type="number" id="newRouteGoalKm" min="0.5" max="50" step="0.5" value="1" class="course-input" />
+          <input type="number" id="newRouteGoalKm" min="0.5" max="50" step="0.5" value="1" class="course-input" inputmode="decimal" />
           <button type="button" class="btn-walk-start" id="btnSaveRoute" style="margin-top:0.5rem;">저장</button>
         </div>
         <div class="walk-actions">
@@ -597,7 +633,7 @@
         <p class="customize-section-title">기본 정보</p>
         <div class="customize-row">
           <label>이름</label>
-          <input type="text" id="inputAvatarName" placeholder="이름 입력" maxlength="8" />
+          <input type="text" id="inputAvatarName" placeholder="이름 입력" maxlength="8" inputmode="text" autocomplete="name" />
         </div>
         <p class="customize-section-title">외형</p>
         <div class="customize-row">
@@ -731,18 +767,18 @@
         <h2 class="auth-title" id="authTitle">로그인</h2>
         <div id="authLoginPanel" class="auth-panel">
           <label>닉네임</label>
-          <input type="text" id="authLoginNick" placeholder="닉네임" maxlength="12" />
+          <input type="text" id="authLoginNick" placeholder="닉네임" maxlength="12" inputmode="text" autocomplete="username" />
           <label>비밀번호</label>
-          <input type="password" id="authLoginPw" placeholder="비밀번호" />
+          <input type="password" id="authLoginPw" placeholder="비밀번호" autocomplete="current-password" />
           <button type="button" class="btn-auth-submit" id="btnAuthLogin">로그인</button>
         </div>
         <div id="authSignupPanel" class="auth-panel" style="display:none;">
           <label>닉네임</label>
-          <input type="text" id="authSignupNick" placeholder="2~12자" maxlength="12" />
+          <input type="text" id="authSignupNick" placeholder="2~12자" maxlength="12" inputmode="text" autocomplete="username" />
           <label>비밀번호</label>
-          <input type="password" id="authSignupPw" placeholder="6자 이상" />
+          <input type="password" id="authSignupPw" placeholder="6자 이상" autocomplete="new-password" />
           <label>비밀번호 확인</label>
-          <input type="password" id="authSignupPw2" placeholder="다시 입력" />
+          <input type="password" id="authSignupPw2" placeholder="다시 입력" autocomplete="new-password" />
           <button type="button" class="btn-auth-submit" id="btnAuthSignup">가입하기</button>
         </div>
         <p class="auth-hint">※ 비밀번호는 서버에서 암호화되어 저장되며, 게임 데이터는 DB에 동기화됩니다.</p>

@@ -1972,11 +1972,20 @@
     var nick = (document.getElementById('authLoginNick') || {}).value.trim();
     var pw = (document.getElementById('authLoginPw') || {}).value;
     if (!nick || !pw) { showToast('닉네임과 비밀번호를 입력해 주세요.'); return; }
-    fetch(API_BASE + '/api/auth/login', {
+    var url = API_BASE + '/api/auth/login';
+    fetch(url, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ nickname: nick, password: pw })
-    }).then(function (r) { return r.json().then(function (j) { return { ok: r.ok, body: j }; }); })
+    }).then(function (r) {
+      if (!r.ok) {
+        return r.text().then(function (text) {
+          try { return { ok: false, body: JSON.parse(text) }; }
+          catch { return { ok: false, body: { error: 'HTTP ' + r.status + ': ' + text.substring(0, 50) } }; }
+        });
+      }
+      return r.json().then(function (j) { return { ok: true, body: j }; });
+    })
       .then(function (x) {
         if (!x.ok) { showToast(x.body.error || '로그인에 실패했어요.'); return; }
         setAuthToken(x.body.token);
@@ -2003,7 +2012,10 @@
         if (card) card.style.display = 'block';
         showToast(userProfile.nickname + '님 환영해요!');
       })
-      .catch(function () { showToast('서버에 연결할 수 없어요.'); });
+      .catch(function (err) {
+        console.error('Login error:', err, 'URL:', url, 'API_BASE:', API_BASE);
+        showToast('서버에 연결할 수 없어요. (API: ' + url + ')');
+      });
   }
   function doSignup() {
     var nick = (document.getElementById('authSignupNick') || {}).value.trim();
@@ -2012,11 +2024,20 @@
     if (!nick || nick.length < 2) { showToast('닉네임은 2자 이상이에요.'); return; }
     if (!pw || pw.length < 6) { showToast('비밀번호는 6자 이상이에요.'); return; }
     if (pw !== pw2) { showToast('비밀번호가 일치하지 않아요.'); return; }
-    fetch(API_BASE + '/api/auth/signup', {
+    var url = API_BASE + '/api/auth/signup';
+    fetch(url, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ nickname: nick, password: pw })
-    }).then(function (r) { return r.json().then(function (j) { return { ok: r.ok, body: j }; }); })
+    }).then(function (r) {
+      if (!r.ok) {
+        return r.text().then(function (text) {
+          try { return { ok: false, body: JSON.parse(text) }; }
+          catch { return { ok: false, body: { error: 'HTTP ' + r.status + ': ' + text.substring(0, 50) } }; }
+        });
+      }
+      return r.json().then(function (j) { return { ok: true, body: j }; });
+    })
       .then(function (x) {
         if (!x.ok) { showToast(x.body.error || '가입에 실패했어요.'); return; }
         setAuthToken(x.body.token);
@@ -2030,7 +2051,10 @@
         if (card) card.style.display = 'block';
         showToast('가입 완료! ' + userProfile.nickname + '님 환영해요.');
       })
-      .catch(function () { showToast('서버에 연결할 수 없어요.'); });
+      .catch(function (err) {
+        console.error('Signup error:', err, 'URL:', url);
+        showToast('서버에 연결할 수 없어요. (API: ' + url + ')');
+      });
   }
   function doLogout() {
     clearAuthToken();

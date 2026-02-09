@@ -16,7 +16,8 @@
   "dependencies": {
     "@capacitor/android": "^8.0.2",
     "@capacitor/cli": "^8.0.2",
-    "@capacitor/core": "^8.0.2"
+    "@capacitor/core": "^8.0.2",
+    "@vercel/node": "^3.0.0"
   },
   "main": "sw.js",
   "keywords": [],
