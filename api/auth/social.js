@@ -19,8 +19,16 @@ module.exports = async (req, res) => {
     }
     
     // 기존 소셜 계정 확인
-    let user = await findUserBySocial(provider, socialId);
+    console.log('Checking for existing social user:', { provider, socialId: socialId?.substring(0, 10) + '...' });
+    let user;
+    try {
+      user = await findUserBySocial(provider, socialId);
+    } catch (findErr) {
+      console.error('findUserBySocial error:', findErr);
+      throw findErr;
+    }
     if (user) {
+      console.log('Found existing social user:', { id: user.id, nickname: user.nickname });
       // 기존 계정 로그인
       if (!user.nickname) {
         console.error('Existing user has no nickname:', user);
@@ -36,6 +44,7 @@ module.exports = async (req, res) => {
         user: { id: user.id, nickname: user.nickname },
       });
     }
+    console.log('No existing social user found, creating new one...');
     
     // 새 계정 생성
     const emailTrimmed = email ? email.trim().toLowerCase() : null;
@@ -57,11 +66,40 @@ module.exports = async (req, res) => {
     }
     
     console.log('Creating social user:', { finalNickname, provider, socialId: socialId?.substring(0, 10) + '...', email: emailTrimmed ? 'provided' : 'null' });
-    const userId = await createSocialUser(finalNickname, provider, socialId, emailTrimmed);
+    let userId;
+    try {
+      userId = await createSocialUser(finalNickname, provider, socialId, emailTrimmed);
+    } catch (createErr) {
+      console.error('createSocialUser threw error:', createErr);
+      console.error('Error code:', createErr.code);
+      console.error('Error constraint:', createErr.constraint);
+      // 중복된 social_id인 경우 기존 사용자 찾기 시도
+      if (createErr.code === '23505') { // Unique violation
+        if (createErr.constraint && createErr.constraint.includes('social')) {
+          console.log('Social ID already exists, trying to find existing user...');
+          const existingUser = await findUserBySocial(provider, socialId);
+          if (existingUser) {
+            console.log('Found existing user:', existingUser.id);
+            const token = jwt.sign(
+              { userId: existingUser.id, nickname: existingUser.nickname },
+              JWT_SECRET,
+              { expiresIn: '30d' }
+            );
+            return res.json({
+              token,
+              user: { id: existingUser.id, nickname: existingUser.nickname },
+            });
+          }
+        }
+        return res.status(409).json({ error: '이미 사용 중인 계정이에요.' });
+      }
+      throw createErr; // 다른 에러는 상위로 전달
+    }
     if (!userId) {
       console.error('createSocialUser returned null/undefined');
       return res.status(500).json({ error: '사용자 생성에 실패했어요.' });
     }
+    console.log('User created successfully, userId:', userId);
     const newUser = await findUserById(userId);
     if (!newUser) {
       console.error('Failed to find user after creation, userId:', userId);
@@ -86,6 +124,8 @@ module.exports = async (req, res) => {
       message: err.message,
       stack: err.stack,
       code: err.code,
+      constraint: err.constraint,
+      detail: err.detail,
       provider: req.body?.provider,
       socialId: req.body?.socialId
     });
@@ -95,9 +135,20 @@ module.exports = async (req, res) => {
     if (err.code === 'ECONNREFUSED' || err.code === 'ENOTFOUND' || (err.message && err.message.includes('connect'))) {
       return res.status(503).json({ error: 'DB 연결에 실패했어요. Supabase 연결 정보(DATABASE_URL)를 확인해 주세요.' });
     }
+    // PostgreSQL 제약 조건 위반 에러 처리
+    if (err.code === '23505') {
+      if (err.constraint && err.constraint.includes('nickname')) {
+        return res.status(409).json({ error: '이미 사용 중인 닉네임이에요.' });
+      }
+      if (err.constraint && err.constraint.includes('social')) {
+        return res.status(409).json({ error: '이미 연결된 소셜 계정이에요.' });
+      }
+      return res.status(409).json({ error: '이미 존재하는 계정이에요.' });
+    }
     return res.status(500).json({ 
       error: '소셜 로그인 중 오류가 났어요.',
-      details: process.env.NODE_ENV === 'development' ? err.message : undefined
+      details: process.env.NODE_ENV === 'development' ? err.message : undefined,
+      code: err.code
     });
   }
 };
