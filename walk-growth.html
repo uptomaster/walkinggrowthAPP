@@ -154,12 +154,137 @@
     .welcome-modal { display: none; position: fixed; inset: 0; background: rgba(0,0,0,0.7); z-index: 300; align-items: center; justify-content: center; padding: 1rem; animation: fadeIn 0.25s ease; }
     .welcome-modal.show { display: flex; }
     .welcome-content { background: var(--card); border-radius: var(--radius-lg); padding: 2rem; max-width: 320px; width: 100%; text-align: center; border: 1px solid rgba(255,255,255,0.08); box-shadow: var(--shadow); }
-    /* 환영 모달은 중앙에서 바로 나타나도록, 추가적인 슬라이드/바운스 애니메이션 제거 */
     .welcome-icon { font-size: 4rem; margin-bottom: 1rem; }
     .welcome-title { font-size: 1.25rem; font-weight: 600; color: var(--accent); margin-bottom: 0.5rem; }
     .welcome-message { color: var(--text-muted); margin-bottom: 1.5rem; }
     .btn-welcome-close { background: var(--accent); color: var(--bg); border: none; border-radius: var(--radius); padding: 0.75rem 2rem; font-size: 0.9rem; font-weight: 600; cursor: pointer; transition: transform 0.2s ease, box-shadow 0.2s ease; }
     .btn-welcome-close:active { transform: scale(0.95); }
+    /* 도감 플로팅 버튼 */
+    .codex-fab {
+      position: fixed;
+      right: 1.2rem;
+      bottom: 5.2rem;
+      width: 52px;
+      height: 52px;
+      border-radius: 999px;
+      border: none;
+      background: linear-gradient(135deg, var(--accent), #22c55e);
+      color: var(--bg);
+      font-size: 1.6rem;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      box-shadow: 0 10px 25px rgba(0,0,0,0.35);
+      cursor: pointer;
+      z-index: 250;
+    }
+    .codex-fab:hover { transform: translateY(-1px); box-shadow: 0 14px 30px rgba(0,0,0,0.4); }
+    .codex-fab:active { transform: translateY(1px) scale(0.97); box-shadow: 0 6px 15px rgba(0,0,0,0.3); }
+    /* 도감 모달 */
+    .codex-overlay {
+      position: fixed;
+      inset: 0;
+      background: rgba(0,0,0,0.7);
+      z-index: 350;
+      display: none;
+      align-items: center;
+      justify-content: center;
+      padding: 1rem;
+    }
+    .codex-overlay.show { display: flex; }
+    .codex-modal {
+      background: var(--card);
+      border-radius: var(--radius-lg);
+      padding: 1.25rem 1.25rem 1rem;
+      max-width: 380px;
+      width: 100%;
+      box-shadow: var(--shadow);
+      position: relative;
+      max-height: calc(100vh - 3rem);
+      overflow: hidden;
+      display: flex;
+      flex-direction: column;
+      gap: 0.75rem;
+    }
+    .codex-close {
+      position: absolute;
+      top: 0.6rem;
+      right: 0.7rem;
+      width: 26px;
+      height: 26px;
+      border-radius: 50%;
+      border: none;
+      background: var(--bg-soft);
+      color: var(--text-muted);
+      cursor: pointer;
+      font-size: 0.9rem;
+    }
+    .codex-title {
+      font-size: 1.05rem;
+      font-weight: 600;
+      color: var(--text);
+      margin-bottom: 0.25rem;
+    }
+    .codex-tabs {
+      display: flex;
+      gap: 0.35rem;
+      margin-bottom: 0.25rem;
+    }
+    .codex-tab {
+      flex: 1;
+      padding: 0.45rem 0.6rem;
+      border-radius: 999px;
+      border: none;
+      background: var(--bg-soft);
+      color: var(--text-muted);
+      font-size: 0.8rem;
+      cursor: pointer;
+    }
+    .codex-tab.active {
+      background: var(--accent-dim);
+      color: var(--accent);
+      font-weight: 600;
+    }
+    .codex-body {
+      flex: 1;
+      overflow-y: auto;
+      margin-top: 0.25rem;
+    }
+    .codex-section-title {
+      font-size: 0.85rem;
+      font-weight: 600;
+      color: var(--text-muted);
+      margin-bottom: 0.5rem;
+    }
+    .codex-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fill, minmax(90px, 1fr));
+      gap: 0.6rem;
+    }
+    .codex-card {
+      background: var(--bg-soft);
+      border-radius: var(--radius);
+      padding: 0.6rem 0.45rem 0.5rem;
+      text-align: center;
+      border: 1px solid rgba(255,255,255,0.05);
+      font-size: 0.75rem;
+    }
+    .codex-card.owned {
+      border-color: var(--accent-dim);
+      box-shadow: 0 0 0 1px rgba(148,163,184,0.25);
+    }
+    .codex-card .codex-emoji {
+      font-size: 1.8rem;
+      margin-bottom: 0.25rem;
+    }
+    .codex-card .codex-name {
+      font-weight: 600;
+      margin-bottom: 0.15rem;
+    }
+    .codex-card .codex-meta {
+      font-size: 0.7rem;
+      color: var(--text-muted);
+    }
     .auth-tabs { display: flex; gap: 0.25rem; margin-bottom: 1rem; }
     .auth-tab { flex: 1; padding: 0.5rem; border: none; border-radius: var(--radius); background: var(--bg-soft); color: var(--text-muted); font-size: 0.85rem; font-family: inherit; cursor: pointer; }
     .auth-tab.active { background: var(--accent-dim); color: var(--accent); font-weight: 600; }
@@ -868,6 +993,31 @@
         </div>
       </div>
     </section>
+    </div>
+
+    <!-- 도감 플로팅 버튼 -->
+    <button type="button" class="codex-fab" id="btnCodex" aria-label="도감 열기">📚</button>
+
+    <!-- 도감 모달 -->
+    <div class="codex-overlay" id="codexOverlay" role="dialog" aria-modal="true" aria-labelledby="codexTitle">
+      <div class="codex-modal">
+        <button type="button" class="codex-close" id="codexClose">×</button>
+        <div class="codex-title" id="codexTitle">도감</div>
+        <div class="codex-tabs">
+          <button type="button" class="codex-tab active" data-codex-tab="equip" id="codexTabEquip">장비 도감</button>
+          <button type="button" class="codex-tab" data-codex-tab="animal" id="codexTabAnimal">동물 도감</button>
+        </div>
+        <div class="codex-body">
+          <div id="codexEquipPanel">
+            <p class="codex-section-title">보급/강화로 얻을 수 있는 장비들</p>
+            <div class="codex-grid" id="codexEquipGrid"></div>
+          </div>
+          <div id="codexAnimalPanel" style="display:none;">
+            <p class="codex-section-title">야생에서 만날 수 있는 동물들</p>
+            <div class="codex-grid" id="codexAnimalGrid"></div>
+          </div>
+        </div>
+      </div>
     </div>
 
     <!-- 로그인/회원가입 (비로그인 시 첫 화면, 로그인 후 메인만 표시) -->
@@ -1593,7 +1743,9 @@
       questClaimed: questClaimed,
       sharedDate: sharedToday ? todayStr() : '',
       lastAttendanceDate: lastAttendanceDate,
-      attendanceStreak: attendanceStreak
+      attendanceStreak: attendanceStreak,
+      // 도감을 위한 추가 정보 (향후 확장용)
+      userRoutes: userRoutes
     };
   }
   function applyGameState(obj) {
@@ -3607,6 +3759,146 @@
       grid.appendChild(card);
     });
   }
+
+  function openCodexModal(initialTab) {
+    var overlay = document.getElementById('codexOverlay');
+    if (!overlay) return;
+    overlay.classList.add('show');
+    document.body.style.overflow = 'hidden';
+    switchCodexTab(initialTab || 'equip');
+    renderEquipmentCodex();
+    renderCodexAnimals();
+  }
+
+  function closeCodexModal() {
+    var overlay = document.getElementById('codexOverlay');
+    if (!overlay) return;
+    overlay.classList.remove('show');
+    document.body.style.overflow = '';
+  }
+
+  function switchCodexTab(tab) {
+    var equipBtn = document.getElementById('codexTabEquip');
+    var animalBtn = document.getElementById('codexTabAnimal');
+    var equipPanel = document.getElementById('codexEquipPanel');
+    var animalPanel = document.getElementById('codexAnimalPanel');
+    if (!equipBtn || !animalBtn || !equipPanel || !animalPanel) return;
+    var isEquip = tab === 'animal' ? false : true;
+    equipBtn.classList.toggle('active', isEquip);
+    animalBtn.classList.toggle('active', !isEquip);
+    equipPanel.style.display = isEquip ? 'block' : 'none';
+    animalPanel.style.display = isEquip ? 'none' : 'block';
+  }
+
+  function getOwnedBaseItemIds() {
+    var owned = {};
+    function addFromItem(item) {
+      if (!item || !item.id) return;
+      var baseId = item.baseId || String(item.id).split('_')[0];
+      owned[baseId] = true;
+    }
+    inventory.forEach(addFromItem);
+    storage.forEach(addFromItem);
+    Object.keys(equipped).forEach(function(slot) {
+      var id = equipped[slot];
+      if (!id) return;
+      var item = inventory.find(function(i){ return i.id === id; });
+      if (item) addFromItem(item);
+    });
+    return owned;
+  }
+
+  function renderEquipmentCodex() {
+    var grid = document.getElementById('codexEquipGrid');
+    if (!grid) return;
+    grid.innerHTML = '';
+    var owned = getOwnedBaseItemIds();
+    // 장비를 type별로 그룹화
+    var sorted = SUPPLY_POOL.slice().sort(function(a, b) {
+      var at = a.type.localeCompare(b.type);
+      if (at !== 0) return at;
+      var atier = TIER_LABELS[a.tier] || a.tier;
+      var btier = TIER_LABELS[b.tier] || b.tier;
+      if (atier === btier) return a.name.localeCompare(b.name);
+      return atier.localeCompare(btier);
+    });
+    sorted.forEach(function(baseItem) {
+      var baseId = baseItem.id;
+      var isOwned = !!owned[baseId];
+      var rarity = baseItem.rarity || 'common';
+      var rarityLabel = {
+        common: '커먼',
+        rare: '레어',
+        epic: '에픽',
+        legend: '레전드',
+        specialist: '스페셜리스트'
+      }[rarity] || rarity;
+      var rarityColor = {
+        common: 'var(--rarity-common)',
+        rare: 'var(--rarity-rare)',
+        epic: 'var(--rarity-epic)',
+        legend: 'var(--rarity-legend)',
+        specialist: 'var(--gold)'
+      }[rarity] || 'var(--text-muted)';
+      var tierLabel = TIER_LABELS[baseItem.tier] || '스탠다드';
+      var card = document.createElement('div');
+      card.className = 'codex-card' + (isOwned ? ' owned' : '');
+      var emoji = isOwned ? baseItem.emoji : '❓';
+      var name = isOwned ? baseItem.name : '???';
+      card.innerHTML =
+        '<div class="codex-emoji">' + emoji + '</div>' +
+        '<div class="codex-name">' + name + '</div>' +
+        '<div class="codex-meta" style="color:' + rarityColor + ';">' + rarityLabel + ' · ' + tierLabel + '</div>';
+      grid.appendChild(card);
+    });
+  }
+
+  function renderCodexAnimals() {
+    var grid = document.getElementById('codexAnimalGrid');
+    if (!grid) return;
+    grid.innerHTML = '';
+    var capturedMap = {};
+    capturedAnimals.forEach(function(c) {
+      capturedMap[c.animalId] = true;
+    });
+    // 희귀도 순서대로 정렬
+    var rarityOrder = { specialist: 0, legend: 1, epic: 2, rare: 3, common: 4 };
+    var sorted = WILD_ANIMALS.slice().sort(function(a, b) {
+      var ra = rarityOrder[a.rarity] != null ? rarityOrder[a.rarity] : 5;
+      var rb = rarityOrder[b.rarity] != null ? rarityOrder[b.rarity] : 5;
+      if (ra !== rb) return ra - rb;
+      return a.name.localeCompare(b.name);
+    });
+    sorted.forEach(function(animal) {
+      var captured = !!capturedMap[animal.id];
+      var rarity = animal.rarity || 'common';
+      var rarityLabel = {
+        common: '커먼',
+        rare: '레어',
+        epic: '에픽',
+        legend: '레전드',
+        specialist: '스페셜리스트'
+      }[rarity] || rarity;
+      var rarityColor = {
+        common: 'var(--rarity-common)',
+        rare: 'var(--rarity-rare)',
+        epic: 'var(--rarity-epic)',
+        legend: 'var(--rarity-legend)',
+        specialist: 'var(--gold)'
+      }[rarity] || 'var(--text-muted)';
+      var card = document.createElement('div');
+      card.className = 'codex-card' + (captured ? ' owned' : '');
+      var emoji = captured ? animal.emoji : '❓';
+      var name = captured ? animal.name : '???';
+      var desc = captured ? animal.description : '아직 만나지 못한 동물이에요.';
+      card.innerHTML =
+        '<div class="codex-emoji">' + emoji + '</div>' +
+        '<div class="codex-name">' + name + '</div>' +
+        '<div class="codex-meta" style="color:' + rarityColor + ';">' + rarityLabel + '</div>' +
+        '<div class="codex-meta" style="margin-top:0.15rem;">' + desc + '</div>';
+      grid.appendChild(card);
+    });
+  }
   
   function openPetSelectModal() {
     var overlay = document.getElementById('petSelectOverlay');
@@ -3859,6 +4151,7 @@
 
   function init() {
     attachListeners();
+    attachCodexListeners();
     loadAll();
     initAuth().then(function () {
       checkRouteRewards();
@@ -3879,6 +4172,8 @@
       renderAchievements();
       renderGold();
       renderEnhanceSelect();
+      renderEquipmentCodex();
+      renderCodexAnimals();
       var themeToggle = document.getElementById('themeToggle');
       if (themeToggle && document.body.getAttribute('data-theme') === 'morning') themeToggle.textContent = '☀️';
       initSensorAndStatus();
@@ -3887,6 +4182,21 @@
       // 30초마다 만료 체크
       setInterval(checkExpiredWildAnimals, 30000);
     });
+  }
+
+  function attachCodexListeners() {
+    var btnCodex = document.getElementById('btnCodex');
+    var codexOverlay = document.getElementById('codexOverlay');
+    var codexClose = document.getElementById('codexClose');
+    var codexTabEquip = document.getElementById('codexTabEquip');
+    var codexTabAnimal = document.getElementById('codexTabAnimal');
+    if (btnCodex) btnCodex.addEventListener('click', function() { openCodexModal('equip'); });
+    if (codexClose) codexClose.addEventListener('click', closeCodexModal);
+    if (codexOverlay) codexOverlay.addEventListener('click', function(e) {
+      if (e.target === codexOverlay) closeCodexModal();
+    });
+    if (codexTabEquip) codexTabEquip.addEventListener('click', function() { switchCodexTab('equip'); renderEquipmentCodex(); });
+    if (codexTabAnimal) codexTabAnimal.addEventListener('click', function() { switchCodexTab('animal'); renderCodexAnimals(); });
   }
 
   if (document.readyState === 'loading') {
