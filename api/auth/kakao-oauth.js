@@ -15,7 +15,7 @@ const getRedirectUri = (req) => {
 };
 
 // 카카오 OAuth 시작 (리다이렉트 URL 반환)
-module.exports.start = async (req, res) => {
+const start = async (req, res) => {
   try {
     const state = Math.random().toString(36).substring(2, 15);
     const redirectUri = getRedirectUri(req);
@@ -34,7 +34,7 @@ module.exports.start = async (req, res) => {
 };
 
 // 카카오 OAuth 콜백 (인증 코드로 액세스 토큰 교환 및 사용자 정보 조회)
-module.exports.callback = async (req, res) => {
+const callback = async (req, res) => {
   try {
     const { code, error } = req.query;
     const redirectUri = getRedirectUri(req);
@@ -152,5 +152,16 @@ module.exports.callback = async (req, res) => {
   } catch (err) {
     console.error('Kakao OAuth callback error:', err);
     return res.redirect(`walkstory://oauth?error=${encodeURIComponent(err.message)}`);
+  }
+};
+
+// Vercel 서버리스 함수: 경로에 따라 start 또는 callback 호출
+module.exports = async (req, res) => {
+  const path = req.url || req.path || '';
+  
+  if (path.includes('callback') || req.query.code) {
+    return callback(req, res);
+  } else {
+    return start(req, res);
   }
 };

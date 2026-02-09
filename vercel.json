@@ -3,6 +3,8 @@
   "buildCommand": "cd server && npm install",
   "outputDirectory": ".",
   "rewrites": [
-    { "source": "/", "destination": "/walk-growth.html" }
+    { "source": "/", "destination": "/walk-growth.html" },
+    { "source": "/api/auth/kakao-oauth-start", "destination": "/api/auth/kakao-oauth" },
+    { "source": "/api/auth/kakao-oauth-callback", "destination": "/api/auth/kakao-oauth" }
   ]
 }
