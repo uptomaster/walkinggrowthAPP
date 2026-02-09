@@ -587,6 +587,7 @@
       localStorage.setItem(STORAGE_KEYS.tutorialCompleted, tutorialCompleted ? 'true' : 'false');
       localStorage.setItem(STORAGE_KEYS.wildAnimals, JSON.stringify(wildAnimals));
       localStorage.setItem(STORAGE_KEYS.capturedAnimals, JSON.stringify(capturedAnimals));
+      localStorage.setItem('walkState', walkState);
       localStorage.setItem(STORAGE_KEYS.questDate, todayStr());
       localStorage.setItem(STORAGE_KEYS.questProgress, String(questGachaCount));
       localStorage.setItem('walk_quest_claimed', JSON.stringify(questClaimed));
@@ -624,6 +625,7 @@
       sharedDate: sharedToday ? todayStr() : '',
       lastAttendanceDate: lastAttendanceDate,
       attendanceStreak: attendanceStreak,
+      walkState: walkState,
       // 도감을 위한 추가 정보 (향후 확장용)
       userRoutes: userRoutes
     };
@@ -652,6 +654,7 @@
     if (obj.sharedDate != null) sharedToday = obj.sharedDate === todayStr();
     if (obj.lastAttendanceDate != null) lastAttendanceDate = obj.lastAttendanceDate;
     if (obj.attendanceStreak != null) attendanceStreak = obj.attendanceStreak;
+    if (obj.walkState != null) walkState = obj.walkState;
     if (obj.pet && typeof obj.pet === 'object') {
       pet = { ...pet, ...obj.pet };
       renderPet();
@@ -903,13 +906,15 @@
       var distMult = 1 + (bonus.distance / 100);
       var xpMult = 1 + (bonus.xp / 100);
       sessionDistanceKm += seg * distMult;
-      // 파티 보너스 계산
+      // 파티 보너스 계산 (함께 산책 중인 멤버 수 기준)
       var partyBonus = 1.0;
-      if (currentParty && currentParty.members) {
-        var memberCount = currentParty.members.length;
-        if (memberCount >= 4) partyBonus = 1.3; // 4명: +30%
-        else if (memberCount >= 3) partyBonus = 1.2; // 3명: +20%
-        else if (memberCount >= 2) partyBonus = 1.1; // 2명: +10%
+      if (currentParty && currentParty.members && walkState === 'walking') {
+        var walkingMemberCount = (currentParty.walkingMembers || []).length;
+        // 자신도 포함하여 계산 (자신 + 함께 산책 중인 멤버)
+        var totalWalking = walkingMemberCount + 1; // 자신 포함
+        if (totalWalking >= 4) partyBonus = 1.3; // 4명: +30%
+        else if (totalWalking >= 3) partyBonus = 1.2; // 3명: +20%
+        else if (totalWalking >= 2) partyBonus = 1.1; // 2명: +10%
       }
       sessionXp = Math.floor(sessionDistanceKm * XP_PER_KM * partyBonus);
       totalXp += Math.floor(seg * XP_PER_KM * xpMult * partyBonus);
@@ -926,6 +931,52 @@
     // 야생 동물 스폰 체크 (50m마다)
     checkWildAnimalSpawn(lat, lon);
     renderWalk();
+    // 경로 대결 정보 업데이트
+    updateRouteRace();
+  }
+  
+  // 경로 대결 정보 업데이트
+  function updateRouteRace() {
+    var raceEl = document.getElementById('walkRace');
+    if (!raceEl) return;
+    raceEl.textContent = '';
+    raceEl.style.display = 'none';
+    if (activeRouteId && sessionStartTimeMs && sessionDistanceKm > 0) {
+      var route = userRoutes.find(function(r){ return r.id === activeRouteId; });
+      if (!route) return;
+      
+      // 베스트 기록이 있는 경우: 페이스 비교
+      if (route.bestTimeMs && route.goalKm) {
+        var now = Date.now();
+        var elapsedMs = now - sessionStartTimeMs;
+        var currentPaceMinPerKm = (elapsedMs / 60000) / Math.max(sessionDistanceKm, 0.001);
+        var bestPaceMinPerKm = (route.bestTimeMs / 60000) / route.goalKm;
+        var diffMinPerKm = currentPaceMinPerKm - bestPaceMinPerKm;
+        raceEl.style.display = 'block';
+        if (Math.abs(diffMinPerKm) < 0.05) {
+          raceEl.innerHTML = '<span style="color:var(--text-muted);">⏱️ 이전 기록과 거의 비슷한 페이스예요.</span>';
+        } else if (diffMinPerKm < 0) {
+          raceEl.innerHTML = '<span style="color:var(--accent);font-weight:600;">⚡ 이전 나보다 더 빠르게 걷는 중이에요! (-' + formatPace(Math.abs(diffMinPerKm)) + '/km)</span>';
+        } else {
+          raceEl.innerHTML = '<span style="color:var(--text-muted);">⏱️ 이전 기록보다 조금 느려요. (+' + formatPace(diffMinPerKm) + '/km)</span>';
+        }
+      } 
+      // 완주한 적은 있지만 베스트 기록이 없는 경우: 시간 비교
+      else if (route.completedAt && route.lastTimeMs) {
+        var currentTimeMs = Date.now() - sessionStartTimeMs;
+        var lastTimeMs = route.lastTimeMs;
+        var diffMs = currentTimeMs - lastTimeMs;
+        var isFaster = diffMs < 0;
+        var diffAbs = Math.abs(diffMs);
+        var diffText = formatDuration(diffAbs);
+        raceEl.style.display = 'block';
+        if (isFaster) {
+          raceEl.innerHTML = '<span style="color:var(--accent);font-weight:600;">⚡ 이전 완주보다 ' + diffText + ' 빠름!</span>';
+        } else {
+          raceEl.innerHTML = '<span style="color:var(--text-muted);">⏱️ 이전 완주보다 ' + diffText + ' 느림 (이전: ' + formatDuration(lastTimeMs) + ')</span>';
+        }
+      }
+    }
   }
   
   function checkWildAnimalSpawn(lat, lon) {
@@ -1064,6 +1115,8 @@
     }
     if (!navigator.geolocation) { showToast('이 기기는 GPS를 지원하지 않아요'); return; }
     walkState = 'walking';
+    // 서버에 산책 상태 저장
+    updateWalkingStateOnServer('walking');
     pathCoords = [];
     sessionDistanceKm = 0;
     sessionXp = 0;
@@ -1105,6 +1158,8 @@
 
   function stopWalk() {
     walkState = 'idle';
+    // 서버에 산책 상태 저장
+    updateWalkingStateOnServer('idle');
     if (watchId != null && navigator.geolocation) navigator.geolocation.clearWatch(watchId);
     watchId = null;
     var startBtn = document.getElementById('btnWalkStart');
@@ -1134,28 +1189,7 @@
         nextEl.textContent = '코스를 완주하면 보급 키트가 보관함에 도착해요!';
       }
     }
-    if (raceEl) {
-      raceEl.textContent = '';
-      if (activeRouteId && sessionStartTimeMs && sessionDistanceKm > 0) {
-        var route = userRoutes.find(function(r){ return r.id === activeRouteId; });
-        if (route && route.bestTimeMs && route.goalKm) {
-          var now = Date.now();
-          var elapsedMs = now - sessionStartTimeMs;
-          var currentPaceMinPerKm = (elapsedMs / 60000) / Math.max(sessionDistanceKm, 0.001);
-          var bestPaceMinPerKm = (route.bestTimeMs / 60000) / route.goalKm;
-          var diffMinPerKm = currentPaceMinPerKm - bestPaceMinPerKm;
-          var label = '';
-          if (Math.abs(diffMinPerKm) < 0.05) {
-            label = '이전 기록과 거의 비슷한 페이스예요.';
-          } else if (diffMinPerKm < 0) {
-            label = '이전 나보다 더 빠르게 걷는 중이에요! (-' + formatPace(Math.abs(diffMinPerKm)) + '/km)';
-          } else {
-            label = '이전 기록보다 조금 느려요. (+' + formatPace(diffMinPerKm) + '/km)';
-          }
-          raceEl.textContent = label;
-        }
-      }
-    }
+    updateRouteRace();
     var totalKmEl = document.getElementById('walkTotalKm');
     if (totalKmEl) totalKmEl.textContent = totalWalkDistanceKm.toFixed(3);
     var titleObj = getTitleForKm(totalWalkDistanceKm);
@@ -3298,6 +3332,54 @@
   var currentChatFriendId = null;
   var chatPollInterval = null;
   var currentParty = null;
+  var partyWalkingStatusInterval = null;
+  var friendWalkingStatusInterval = null;
+  var userProfile = null;
+
+  // 산책 상태를 서버에 저장
+  function updateWalkingStateOnServer(state) {
+    if (!isLoggedIn) return;
+    var token = getAuthToken();
+    if (!token) return;
+    
+    // saveAll()에서 이미 walkState가 저장되지만, 명시적으로 서버에 저장
+    saveAll();
+  }
+
+  // 파티원들의 산책 상태 조회
+  function updatePartyWalkingStatus() {
+    if (!isLoggedIn || !currentParty) return;
+    var token = getAuthToken();
+    if (!token) return;
+    
+    var me = null;
+    try {
+      var payload = JSON.parse(atob(token.split('.')[1]));
+      me = payload.userId;
+    } catch (e) {}
+    
+    fetch(API_BASE + '/api/party?action=walking-status', {
+      headers: { 'Authorization': 'Bearer ' + token }
+    })
+    .then(function(res) { return res.json(); })
+    .then(function(data) {
+      if (data.error) return;
+      if (data.members && currentParty) {
+        // 함께 산책 중인 멤버 ID 목록 저장 (자신 제외)
+        var walkingMemberIds = data.members
+          .filter(function(m) { return m.isWalking && m.id !== me; })
+          .map(function(m) { return m.id; });
+        currentParty.walkingMembers = walkingMemberIds;
+        // 파티 멤버 UI 업데이트
+        if (currentParty.members) {
+          renderPartyMembers(currentParty.members);
+        }
+      }
+    })
+    .catch(function(err) {
+      console.error('Party walking status error:', err);
+    });
+  }
 
   // 친구 검색
   function searchFriends() {
@@ -3406,6 +3488,13 @@
       console.log('Friends data:', data); // 디버깅용
       renderFriendRequests(data.receivedRequests || []);
       renderFriendsList(data.friends || []);
+      // 친구 목록 렌더링 후 주기적으로 산책 상태 업데이트
+      if (friendWalkingStatusInterval) {
+        clearInterval(friendWalkingStatusInterval);
+      }
+      friendWalkingStatusInterval = setInterval(function() {
+        renderFriends();
+      }, 15000); // 15초마다 친구 목록 갱신
     })
     .catch(function(err) {
       console.error('Friend list error:', err);
@@ -3451,10 +3540,11 @@
       return;
     }
     container.innerHTML = friends.map(function(friend) {
+      var isWalking = friend.isWalking || false;
       return '<div class="friend-item">' +
         '<div class="friend-info">' +
         '<div class="friend-name" style="cursor:pointer;" data-friend-id="' + friend.friend_id + '" data-friend-name="' + escapeHtml(friend.nickname) + '">' + escapeHtml(friend.nickname) + '</div>' +
-        '<div class="friend-status">친구</div>' +
+        '<div class="friend-status">' + (isWalking ? '<span style="color:var(--accent);">🚶 산책 중</span>' : '친구') + '</div>' +
         '</div>' +
         '<div class="friend-actions">' +
         '<button type="button" class="btn-friend-action btn-friend-chat" data-friend-id="' + friend.friend_id + '" data-friend-name="' + escapeHtml(friend.nickname) + '">채팅</button>' +
@@ -3679,6 +3769,14 @@
       renderPartyInfo(data.party);
       renderPartyMembers(data.party ? data.party.members : []);
       renderPartyInviteFriends();
+      // 파티원 산책 상태 주기적 업데이트 시작
+      if (partyWalkingStatusInterval) {
+        clearInterval(partyWalkingStatusInterval);
+      }
+      if (currentParty) {
+        updatePartyWalkingStatus(); // 즉시 한 번 조회
+        partyWalkingStatusInterval = setInterval(updatePartyWalkingStatus, 10000); // 10초마다
+      }
     })
     .catch(function(err) {
       console.error('Party me error:', err);
@@ -3732,13 +3830,17 @@
       var payload = JSON.parse(atob(token.split('.')[1]));
       me = payload.userId;
     } catch (e) {}
+    var walkingMemberIds = currentParty && currentParty.walkingMembers ? currentParty.walkingMembers : [];
+    var myWalkingState = walkState === 'walking';
     container.innerHTML = members.map(function(member) {
       var isLeader = currentParty && currentParty.leaderId === member.id;
       var isMe = member.id === me;
+      var isWalking = isMe ? myWalkingState : walkingMemberIds.includes(member.id);
       return '<div class="party-member' + (isLeader ? ' party-member-leader' : '') + '">' +
         '<div class="party-member-info">' +
         '<div class="party-member-name" style="cursor:pointer;" data-member-id="' + member.id + '" data-member-nickname="' + escapeHtml(member.nickname) + '">' + escapeHtml(member.nickname) + (isMe ? ' <span style="color:var(--text-muted);font-weight:400;">(나)</span>' : '') + '</div>' +
         (isLeader ? '<div class="party-member-role">리더</div>' : '') +
+        (isWalking ? '<div class="party-member-status" style="color:var(--accent);font-size:0.75rem;margin-top:0.25rem;">🚶 산책 중</div>' : '') +
         '</div>' +
         '</div>';
     }).join('');
@@ -3806,6 +3908,10 @@
       }
       showToast(data.message || '파티에서 나갔어요.');
       currentParty = null;
+      if (partyWalkingStatusInterval) {
+        clearInterval(partyWalkingStatusInterval);
+        partyWalkingStatusInterval = null;
+      }
       renderParty();
     })
     .catch(function(err) {

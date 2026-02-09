@@ -45,7 +45,7 @@ module.exports = async (req, res) => {
 
           // 사용자 데이터 조회
           const dataResult = await pool.query(
-            `SELECT data FROM user_data WHERE user_id = $1`,
+            `SELECT data_json FROM user_data WHERE user_id = $1`,
             [targetUserId]
           );
 
@@ -58,11 +58,11 @@ module.exports = async (req, res) => {
             capturedAnimals: []
           };
 
-          if (dataResult.rows.length > 0 && dataResult.rows[0].data) {
+          if (dataResult.rows.length > 0 && dataResult.rows[0].data_json) {
             try {
-              const userData = typeof dataResult.rows[0].data === 'string' 
-                ? JSON.parse(dataResult.rows[0].data) 
-                : dataResult.rows[0].data;
+              const userData = typeof dataResult.rows[0].data_json === 'string' 
+                ? JSON.parse(dataResult.rows[0].data_json) 
+                : dataResult.rows[0].data_json;
               
               profileData.totalXp = userData.totalXp || 0;
               profileData.lifetimeSteps = userData.lifetimeSteps || 0;

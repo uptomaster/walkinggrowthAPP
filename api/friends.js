@@ -82,9 +82,35 @@ module.exports = async (req, res) => {
            ORDER BY created_at DESC`,
           [req.userId]
         );
+        
+        // 각 친구의 산책 상태 조회
+        const friendsWithStatus = await Promise.all(
+          friends.rows.map(async (friend) => {
+            const dataResult = await pool.query(
+              `SELECT data FROM user_data WHERE user_id = $1`,
+              [friend.friend_id]
+            );
+            let isWalking = false;
+            if (dataResult.rows.length > 0 && dataResult.rows[0].data) {
+              try {
+                const userData = typeof dataResult.rows[0].data === 'string' 
+                  ? JSON.parse(dataResult.rows[0].data) 
+                  : dataResult.rows[0].data;
+                isWalking = userData.walkState === 'walking';
+              } catch (e) {
+                console.error('Error parsing user data for walking status:', e);
+              }
+            }
+            return {
+              ...friend,
+              isWalking: isWalking
+            };
+          })
+        );
+        
         return res.json({ 
           receivedRequests: receivedRequests.rows,
-          friends: friends.rows
+          friends: friendsWithStatus
         });
       } catch (err) {
         console.error('Friend list error:', err);

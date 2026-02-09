@@ -254,5 +254,102 @@ module.exports = async (req, res) => {
     });
   }
   
+  // GET 요청: 파티 정보 조회 또는 산책 상태 조회
+  if (req.method === 'GET') {
+    try {
+      const userId = await authenticateToken(req, res);
+      if (!userId) return;
+      
+      const action = req.query.action;
+      
+      // 파티원 산책 상태 조회
+      if (action === 'walking-status') {
+        const party = await pool.query(
+          `SELECT * FROM parties WHERE $1 = ANY(member_ids) OR leader_id = $1`,
+          [userId]
+        );
+        if (party.rows.length === 0) {
+          return res.json({ members: [] });
+        }
+        const partyData = party.rows[0];
+        const allMemberIds = [partyData.leader_id, ...(partyData.member_ids || [])];
+        
+        // 각 멤버의 산책 상태 조회
+        const statusResults = await Promise.all(
+          allMemberIds.map(async (memberId) => {
+            const dataResult = await pool.query(
+              `SELECT data FROM user_data WHERE user_id = $1`,
+              [memberId]
+            );
+            let isWalking = false;
+            if (dataResult.rows.length > 0 && dataResult.rows[0].data) {
+              try {
+                const userData = typeof dataResult.rows[0].data === 'string' 
+                  ? JSON.parse(dataResult.rows[0].data) 
+                  : dataResult.rows[0].data;
+                isWalking = userData.walkState === 'walking';
+              } catch (e) {
+                console.error('Error parsing user data for walking status:', e);
+              }
+            }
+            const userResult = await pool.query(
+              `SELECT id, nickname FROM users WHERE id = $1`,
+              [memberId]
+            );
+            return {
+              id: memberId,
+              nickname: userResult.rows[0]?.nickname || '알 수 없음',
+              isWalking: isWalking
+            };
+          })
+        );
+        
+        return res.json({ members: statusResults });
+      }
+      
+      // 기본 파티 정보 조회
+      const party = await pool.query(
+        `SELECT * FROM parties WHERE $1 = ANY(member_ids) OR leader_id = $1`,
+        [userId]
+      );
+      if (party.rows.length === 0) {
+        return res.json({ party: null });
+      }
+      const partyData = party.rows[0];
+      const memberIds = partyData.member_ids || [];
+      const allMemberIds = [partyData.leader_id, ...memberIds];
+      
+      if (allMemberIds.length > 0) {
+        const membersResult = await pool.query(
+          `SELECT id, nickname FROM users WHERE id = ANY($1::integer[])`,
+          [allMemberIds]
+        );
+        const members = membersResult.rows.map(function(row) {
+          return {
+            id: row.id,
+            nickname: row.nickname
+          };
+        });
+        return res.json({
+          party: {
+            id: partyData.id,
+            leaderId: partyData.leader_id,
+            members: members
+          }
+        });
+      }
+      return res.json({
+        party: {
+          id: partyData.id,
+          leaderId: partyData.leader_id,
+          members: []
+        }
+      });
+    } catch (err) {
+      console.error('Party GET error:', err);
+      return res.status(500).json({ error: '파티 정보 조회 중 오류가 발생했어요.' });
+    }
+  }
+  
   return res.status(405).json({ error: 'Method not allowed' });
 };
