@@ -42,7 +42,19 @@ module.exports = async (req, res) => {
     }
     
     const userId = await createSocialUser(finalNickname, provider, socialId, emailTrimmed);
+    if (!userId) {
+      console.error('createSocialUser returned null/undefined');
+      return res.status(500).json({ error: '사용자 생성에 실패했어요.' });
+    }
     const newUser = await findUserById(userId);
+    if (!newUser) {
+      console.error('Failed to find user after creation, userId:', userId);
+      return res.status(500).json({ error: '사용자 생성 후 정보를 가져올 수 없어요.' });
+    }
+    if (!newUser.nickname) {
+      console.error('User created but nickname is missing:', newUser);
+      return res.status(500).json({ error: '사용자 정보가 올바르지 않아요.' });
+    }
     const token = jwt.sign(
       { userId: newUser.id, nickname: newUser.nickname },
       JWT_SECRET,
@@ -54,6 +66,22 @@ module.exports = async (req, res) => {
     });
   } catch (err) {
     console.error('social login error', err);
-    return res.status(500).json({ error: '소셜 로그인 중 오류가 났어요.' });
+    console.error('Error details:', {
+      message: err.message,
+      stack: err.stack,
+      code: err.code,
+      provider: req.body?.provider,
+      socialId: req.body?.socialId
+    });
+    if (err.message === 'DATABASE_URL_NOT_SET') {
+      return res.status(503).json({ error: '서버 DB 설정이 필요해요. (DATABASE_URL 환경 변수)' });
+    }
+    if (err.code === 'ECONNREFUSED' || err.code === 'ENOTFOUND' || (err.message && err.message.includes('connect'))) {
+      return res.status(503).json({ error: 'DB 연결에 실패했어요. Supabase 연결 정보(DATABASE_URL)를 확인해 주세요.' });
+    }
+    return res.status(500).json({ 
+      error: '소셜 로그인 중 오류가 났어요.',
+      details: process.env.NODE_ENV === 'development' ? err.message : undefined
+    });
   }
 };
