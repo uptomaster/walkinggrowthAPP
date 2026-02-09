@@ -25,30 +25,7 @@ async function initTables() {
       );
     `);
     
-    // email과 social_id에 인덱스 추가
-    await client.query(`
-      CREATE INDEX IF NOT EXISTS idx_users_nickname ON users(nickname);
-    `);
-    await client.query(`
-      CREATE INDEX IF NOT EXISTS idx_users_email ON users(email) WHERE email IS NOT NULL;
-    `);
-    await client.query(`
-      CREATE INDEX IF NOT EXISTS idx_users_social ON users(social_provider, social_id) WHERE social_provider IS NOT NULL;
-    `);
-    await client.query(`
-      CREATE INDEX IF NOT EXISTS idx_users_reset_token ON users(password_reset_token) WHERE password_reset_token IS NOT NULL;
-    `);
-    
-    // user_data 테이블 생성
-    await client.query(`
-      CREATE TABLE IF NOT EXISTS user_data (
-        user_id INTEGER NOT NULL PRIMARY KEY REFERENCES users(id) ON DELETE CASCADE,
-        data_json TEXT,
-        updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
-      );
-    `);
-    
-    // 기존 users 테이블에 새 컬럼 추가 (마이그레이션)
+    // 기존 users 테이블에 새 컬럼 추가 (마이그레이션) - 인덱스 생성 전에 실행해야 함
     await client.query(`
       ALTER TABLE users ADD COLUMN IF NOT EXISTS email TEXT;
     `);
@@ -63,6 +40,46 @@ async function initTables() {
     `);
     await client.query(`
       ALTER TABLE users ADD COLUMN IF NOT EXISTS social_id TEXT;
+    `);
+    
+    // email과 social_id에 인덱스 추가 (컬럼 추가 후에 실행)
+    await client.query(`
+      CREATE INDEX IF NOT EXISTS idx_users_nickname ON users(nickname);
+    `);
+    // email 컬럼이 존재하는 경우에만 인덱스 생성 시도
+    try {
+      await client.query(`
+        CREATE INDEX IF NOT EXISTS idx_users_email ON users(email) WHERE email IS NOT NULL;
+      `);
+    } catch (idxErr) {
+      // 컬럼이 없으면 인덱스 생성 스킵 (이미 컬럼 추가했으므로 일반적으로 발생하지 않음)
+      if (idxErr.code !== '42703') throw idxErr;
+      console.warn('Email column may not exist, skipping email index creation');
+    }
+    try {
+      await client.query(`
+        CREATE INDEX IF NOT EXISTS idx_users_social ON users(social_provider, social_id) WHERE social_provider IS NOT NULL;
+      `);
+    } catch (idxErr) {
+      if (idxErr.code !== '42703') throw idxErr;
+      console.warn('Social columns may not exist, skipping social index creation');
+    }
+    try {
+      await client.query(`
+        CREATE INDEX IF NOT EXISTS idx_users_reset_token ON users(password_reset_token) WHERE password_reset_token IS NOT NULL;
+      `);
+    } catch (idxErr) {
+      if (idxErr.code !== '42703') throw idxErr;
+      console.warn('Reset token column may not exist, skipping reset token index creation');
+    }
+    
+    // user_data 테이블 생성
+    await client.query(`
+      CREATE TABLE IF NOT EXISTS user_data (
+        user_id INTEGER NOT NULL PRIMARY KEY REFERENCES users(id) ON DELETE CASCADE,
+        data_json TEXT,
+        updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+      );
     `);
   } catch (err) {
     console.error('initTables error:', err);
