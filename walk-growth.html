@@ -3791,11 +3791,12 @@
   }
 
   function getOwnedBaseItemIds() {
-    var owned = {};
+    // 이름+타입 기준으로 획득 여부를 판별 (예전 아이템 ID 포맷도 대응)
+    var ownedKeyMap = {};
     function addFromItem(item) {
-      if (!item || !item.id) return;
-      var baseId = item.baseId || String(item.id).split('_')[0];
-      owned[baseId] = true;
+      if (!item || !item.name || !item.type) return;
+      var key = item.type + '|' + item.name;
+      ownedKeyMap[key] = true;
     }
     inventory.forEach(addFromItem);
     storage.forEach(addFromItem);
@@ -3805,7 +3806,7 @@
       var item = inventory.find(function(i){ return i.id === id; });
       if (item) addFromItem(item);
     });
-    return owned;
+    return ownedKeyMap;
   }
 
   function renderEquipmentCodex() {
@@ -3823,9 +3824,20 @@
       return atier.localeCompare(btier);
     });
     sorted.forEach(function(baseItem) {
-      var baseId = baseItem.id;
-      var isOwned = !!owned[baseId];
-      var rarity = baseItem.rarity || 'common';
+      // 이름+타입으로 보유 여부 확인
+      var key = baseItem.type + '|' + baseItem.name;
+      var isOwned = !!owned[key];
+      // rarity가 없으면 tier를 기반으로 자동 매핑
+      var inferredRarity = (function(tier) {
+        switch (tier) {
+          case 'standard': return 'common';
+          case 'pro': return 'rare';
+          case 'prime': return 'epic';
+          case 'signature': return 'legend';
+          default: return 'common';
+        }
+      })(baseItem.tier || 'standard');
+      var rarity = baseItem.rarity || inferredRarity || 'common';
       var rarityLabel = {
         common: '커먼',
         rare: '레어',
@@ -3861,18 +3873,35 @@
     capturedAnimals.forEach(function(c) {
       capturedMap[c.animalId] = true;
     });
-    // 희귀도 순서대로 정렬
-    var rarityOrder = { specialist: 0, legend: 1, epic: 2, rare: 3, common: 4 };
-    var sorted = WILD_ANIMALS.slice().sort(function(a, b) {
+    // 기본 펫(처음 선택하는 8종)도 도감에 포함
+    var allAnimals = [];
+    PET_TYPES.forEach(function(petType) {
+      allAnimals.push({
+        id: petType.id,
+        name: petType.name,
+        emoji: petType.emoji,
+        rarity: 'partner',
+        _kind: 'pet'
+      });
+    });
+    WILD_ANIMALS.forEach(function(animal) {
+      allAnimals.push(Object.assign({ _kind: 'wild' }, animal));
+    });
+    // 희귀도 순서대로 정렬 (파트너 > 스페셜리스트 > 레전드 > 에픽 > 레어 > 커먼)
+    var rarityOrder = { partner: 0, specialist: 1, legend: 2, epic: 3, rare: 4, common: 5 };
+    var sorted = allAnimals.slice().sort(function(a, b) {
       var ra = rarityOrder[a.rarity] != null ? rarityOrder[a.rarity] : 5;
       var rb = rarityOrder[b.rarity] != null ? rarityOrder[b.rarity] : 5;
       if (ra !== rb) return ra - rb;
       return a.name.localeCompare(b.name);
     });
     sorted.forEach(function(animal) {
-      var captured = !!capturedMap[animal.id];
+      // 펫은 내가 선택한 동물이면 "획득" 처리, 야생 동물은 실제 포획 여부 체크
+      var isMyPet = (animal._kind === 'pet' && pet && pet.type === animal.id);
+      var captured = isMyPet || !!capturedMap[animal.id];
       var rarity = animal.rarity || 'common';
       var rarityLabel = {
+        partner: '파트너',
         common: '커먼',
         rare: '레어',
         epic: '에픽',
@@ -3880,6 +3909,7 @@
         specialist: '스페셜리스트'
       }[rarity] || rarity;
       var rarityColor = {
+        partner: 'var(--accent)',
         common: 'var(--rarity-common)',
         rare: 'var(--rarity-rare)',
         epic: 'var(--rarity-epic)',
