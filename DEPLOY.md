@@ -17,7 +17,16 @@
    (직접 연결용: `postgresql://postgres:[PASSWORD]@db.[PROJECT-REF].supabase.co:5432/postgres`)
 4. 이 값을 **DATABASE_URL** 환경 변수로 사용합니다 (로컬 `.env` 및 Render/Vercel 환경 변수).
 
-배포 후 첫 API 호출 시 `users`, `user_data` 테이블이 자동 생성됩니다.
+배포 후 첫 API 호출(회원가입/로그인 등) 시 **`users`**, **`user_data`** 테이블이 서버에서 자동 생성됩니다.
+
+### Supabase에서 따로 할 일 없음
+
+- **테이블 만들기**: 안 해도 됨. 위 두 테이블은 앱이 처음 DB에 접속할 때 자동 생성됨.
+- **RLS(Row Level Security) / 정책**: 설정 안 해도 됨. 우리는 Supabase REST API가 아니라 **PostgreSQL 연결(URI)** 로만 접속함.
+- **API 키(anon key 등)**: 사용 안 함. `DATABASE_URL`(DB 비밀번호 포함 연결 문자열)만 쓰면 됨.
+- **네트워크 제한**: 기본값 그대로 두면 됨. (필요하면 Supabase → Settings → Database에서 IP 제한 설정 가능)
+
+정리하면, Supabase에서는 **프로젝트 생성 → Database 연결 URI 복사**만 하면 됩니다.
 
 ---
 

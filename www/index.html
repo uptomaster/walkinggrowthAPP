@@ -100,6 +100,28 @@
     .theme-toggle { width: 36px; height: 36px; border-radius: 50%; border: 1px solid rgba(255,255,255,0.2); background: var(--card); color: var(--text-muted); font-size: 1rem; cursor: pointer; display: flex; align-items: center; justify-content: center; }
     [data-theme="morning"] .theme-toggle { border-color: rgba(0,0,0,0.1); }
     .gold-display { font-size: 0.85rem; font-weight: 700; color: var(--gold); display: flex; align-items: center; gap: 0.25rem; }
+    .header-auth-btn { font-size: 0.7rem; padding: 0.3rem 0.5rem; border-radius: 0.5rem; border: 1px solid rgba(255,255,255,0.2); background: var(--card); color: var(--text-muted); cursor: pointer; font-family: inherit; font-weight: 500; }
+    .header-auth-btn:hover { color: var(--accent); border-color: var(--accent); }
+    .header-auth-btn.logged-in { border-color: var(--accent); color: var(--accent); }
+    .auth-overlay { position: fixed; inset: 0; background: rgba(0,0,0,0.6); z-index: 200; display: flex; align-items: center; justify-content: center; padding: 1rem; }
+    .auth-modal { background: var(--card); border-radius: var(--radius-lg); padding: 1.5rem; max-width: 320px; width: 100%; border: 1px solid rgba(255,255,255,0.08); box-shadow: var(--shadow); position: relative; }
+    .auth-tabs { display: flex; gap: 0.25rem; margin-bottom: 1rem; }
+    .auth-tab { flex: 1; padding: 0.5rem; border: none; border-radius: var(--radius); background: var(--bg-soft); color: var(--text-muted); font-size: 0.85rem; font-family: inherit; cursor: pointer; }
+    .auth-tab.active { background: var(--accent-dim); color: var(--accent); font-weight: 600; }
+    .auth-title { font-size: 1rem; margin-bottom: 1rem; color: var(--text); }
+    .auth-panel label { display: block; font-size: 0.8rem; color: var(--text-muted); margin-top: 0.75rem; margin-bottom: 0.25rem; }
+    .auth-panel input { width: 100%; padding: 0.6rem; border-radius: var(--radius); border: 1px solid rgba(255,255,255,0.15); background: var(--bg-soft); color: var(--text); font-size: 0.9rem; box-sizing: border-box; }
+    .btn-auth-submit { width: 100%; margin-top: 1rem; padding: 0.65rem; border: none; border-radius: var(--radius); background: linear-gradient(145deg, var(--accent), #10b981); color: var(--bg); font-weight: 600; font-family: inherit; cursor: pointer; font-size: 0.9rem; }
+    .auth-hint { font-size: 0.7rem; color: var(--text-muted); margin-top: 0.75rem; }
+    .auth-close { position: absolute; top: 0.75rem; right: 0.75rem; width: 28px; height: 28px; border: none; border-radius: 50%; background: var(--bg-soft); color: var(--text-muted); cursor: pointer; font-size: 1rem; line-height: 1; }
+    .auth-overlay.auth-gate { align-items: center; justify-content: center; }
+    .auth-overlay.auth-gate .auth-close { display: none; }
+    #appMain { display: block; }
+    #appMain.hidden { display: none !important; }
+    .attendance-card { background: linear-gradient(145deg, var(--card), rgba(251,191,36,0.06)); border: 1px solid rgba(251,191,36,0.2); border-radius: var(--radius-lg); padding: 1rem; margin-bottom: 1rem; box-shadow: var(--shadow); }
+    .attendance-desc { font-size: 0.8rem; color: var(--text-muted); margin-bottom: 0.75rem; }
+    .attendance-status { font-size: 0.9rem; color: var(--text); margin-bottom: 0.5rem; }
+    .btn-attendance { width: 100%; padding: 0.65rem; border: none; border-radius: var(--radius); background: linear-gradient(145deg, var(--gold), #d97706); color: #1a1a1a; font-weight: 700; font-family: inherit; cursor: pointer; font-size: 0.9rem; }
     .title-badge { font-size: 0.7rem; color: var(--accent); margin-top: 0.35rem; font-weight: 600; }
     .walk-stat.walk-total { grid-column: 1 / -1; }
 
@@ -364,17 +386,19 @@
     .walk-route-select select { width: 100%; padding: 0.65rem 0.85rem; border-radius: var(--radius); border: 1px solid rgba(255,255,255,0.1); background: var(--bg-soft); color: var(--text); font-size: 0.95rem; }
     .btn-add-route { width: 100%; padding: 0.6rem; margin-top: 0.5rem; border-radius: var(--radius); border: 1px dashed rgba(52,211,153,0.5); background: transparent; color: var(--accent); font-size: 0.85rem; font-weight: 600; cursor: pointer; font-family: inherit; transition: all 0.2s; }
     .btn-add-route:hover { background: var(--accent-dim); }
-    #walkMap { width: 100%; height: 220px; border-radius: var(--radius); margin-top: 1rem; background: var(--bg-soft); border: 1px solid rgba(255,255,255,0.08); overflow: hidden; position: relative; }
-    .our-map-wrap { width: 100%; height: 100%; position: relative; }
+    #walkMap { width: 100%; height: 220px; border-radius: var(--radius-lg); margin-top: 1rem; overflow: hidden; position: relative; box-shadow: inset 0 0 0 1px rgba(255,255,255,0.06), 0 4px 20px rgba(0,0,0,0.2); background: linear-gradient(180deg, var(--bg-soft) 0%, var(--card) 100%); }
+    .our-map-wrap { width: 100%; height: 100%; position: relative; border-radius: inherit; }
     .our-map-wrap svg { width: 100%; height: 100%; display: block; }
-    .our-map-path { fill: none; stroke: var(--accent); stroke-width: 3.5; stroke-linecap: round; stroke-linejoin: round; opacity: 0.95; filter: drop-shadow(0 0 4px var(--accent-glow)); }
-    [data-theme="morning"] .our-map-path { stroke: var(--accent); filter: drop-shadow(0 0 3px rgba(46,125,50,0.4)); }
-    .our-map-char { transition: transform 0.15s ease-out; }
-    .our-map-char circle { fill: var(--accent); stroke: var(--bg); stroke-width: 2; }
-    .our-map-char text { font-size: 14px; text-anchor: middle; dominant-baseline: middle; fill: var(--bg); }
-    .our-map-grid line { stroke: rgba(255,255,255,0.04); stroke-width: 0.5; }
-    [data-theme="morning"] .our-map-grid line { stroke: rgba(0,0,0,0.06); }
-    .our-map-label { position: absolute; bottom: 8px; left: 10px; font-size: 0.7rem; color: var(--text-muted); }
+    .our-map-path { fill: none; stroke: var(--accent); stroke-width: 4; stroke-linecap: round; stroke-linejoin: round; opacity: 0.9; filter: drop-shadow(0 0 6px var(--accent-glow)); transition: d 0.2s ease; }
+    [data-theme="morning"] .our-map-path { stroke: var(--accent); filter: drop-shadow(0 0 4px rgba(22,163,74,0.35)); }
+    .our-map-char { transition: transform 0.2s ease-out; }
+    .our-map-char .char-body { fill: var(--accent); stroke: var(--bg); stroke-width: 2; }
+    .our-map-char .char-head { fill: var(--accent); stroke: var(--bg); stroke-width: 1.5; }
+    .our-map-char .char-shadow { fill: rgba(0,0,0,0.2); }
+    .our-map-grid line { stroke: rgba(255,255,255,0.06); stroke-width: 0.4; stroke-dasharray: 3 4; }
+    [data-theme="morning"] .our-map-grid line { stroke: rgba(0,0,0,0.08); stroke-dasharray: 3 4; }
+    .our-map-label { position: absolute; bottom: 10px; left: 12px; font-size: 0.72rem; color: var(--text-muted); font-weight: 500; }
+    .routes-map-box { border-radius: var(--radius-lg); overflow: hidden; background: linear-gradient(180deg, var(--bg-soft) 0%, var(--card) 100%); box-shadow: inset 0 0 0 1px rgba(255,255,255,0.06); }
     .route-create-card { margin-bottom: 1rem; padding: 1rem; background: var(--card); border-radius: var(--radius); border: 1px solid rgba(255,255,255,0.06); }
     .route-create-card input { margin-bottom: 0.5rem; }
     .achievement-section { margin-bottom: 1.25rem; }
@@ -426,23 +450,31 @@
     .equip-bonus-summary { font-size: 0.8rem; color: var(--text-muted); margin-top: 0.75rem; padding: 0.6rem; background: var(--bg-soft); border-radius: var(--radius); border: 1px solid rgba(255,255,255,0.06); }
     .equip-bonus-summary strong { color: var(--accent); }
 
-    /* 2D 캐릭터 인간형 */
-    .avatar-human { width: 100px; height: 160px; margin: 0 auto; position: relative; }
-    .avatar-human .ah-head { position: absolute; top: 0; left: 50%; transform: translateX(-50%); width: 36px; height: 36px; border-radius: 50%; }
-    .avatar-human .ah-neck { position: absolute; top: 34px; left: 50%; transform: translateX(-50%); width: 12px; height: 14px; border-radius: 0 0 4px 4px; background: var(--skin, #f5d0b0); }
-    .avatar-human .ah-torso { position: absolute; top: 48px; left: 50%; transform: translateX(-50%); width: 44px; height: 42px; border-radius: 8px 8px 4px 4px; }
-    .avatar-human .ah-arm-l, .avatar-human .ah-arm-r { position: absolute; top: 52px; width: 12px; height: 32px; border-radius: 6px; }
-    .avatar-human .ah-arm-l { left: 2px; transform-origin: top right; }
-    .avatar-human .ah-arm-r { right: 2px; transform-origin: top left; }
-    .avatar-human .ah-leg-l, .avatar-human .ah-leg-r { position: absolute; top: 88px; width: 16px; height: 42px; border-radius: 0 0 6px 6px; }
-    .avatar-human .ah-leg-l { left: 22px; }
-    .avatar-human .ah-leg-r { right: 22px; }
-    .avatar-human .ah-slot-head { position: absolute; top: -8px; left: 50%; transform: translateX(-50%); font-size: 1.2rem; }
-    .avatar-human .ah-slot-accessory { position: absolute; top: 8px; right: -14px; font-size: 1rem; }
+    /* 2D 캐릭터 인간형 - 부드러운 비율과 그림자 */
+    .avatar-human { width: 100px; height: 168px; margin: 0 auto; position: relative; filter: drop-shadow(0 4px 12px rgba(0,0,0,0.2)); }
+    .avatar-human .ah-head { position: absolute; top: 0; left: 50%; transform: translateX(-50%); width: 38px; height: 38px; border-radius: 50%; box-shadow: inset -2px -1px 0 rgba(0,0,0,0.06), 0 2px 6px rgba(0,0,0,0.12); }
+    .avatar-human .ah-face { position: absolute; top: 12px; left: 50%; transform: translateX(-50%); width: 24px; height: 10px; display: flex; justify-content: space-between; align-items: center; }
+    .avatar-human .ah-face .eye { width: 4px; height: 4px; border-radius: 50%; background: rgba(0,0,0,0.5); }
+    .avatar-human .ah-neck { position: absolute; top: 36px; left: 50%; transform: translateX(-50%); width: 10px; height: 12px; border-radius: 0 0 4px 4px; box-shadow: 0 1px 3px rgba(0,0,0,0.1); }
+    .avatar-human .ah-torso { position: absolute; top: 48px; left: 50%; transform: translateX(-50%); width: 46px; height: 44px; border-radius: 12px 12px 8px 8px; box-shadow: 0 2px 8px rgba(0,0,0,0.15), inset 0 1px 0 rgba(255,255,255,0.1); }
+    .avatar-human .ah-arm-l, .avatar-human .ah-arm-r { position: absolute; top: 52px; width: 10px; height: 34px; border-radius: 8px; box-shadow: 0 1px 4px rgba(0,0,0,0.1); }
+    .avatar-human .ah-arm-l { left: 0; transform-origin: top right; }
+    .avatar-human .ah-arm-r { right: 0; transform-origin: top left; }
+    .avatar-human .ah-leg-l, .avatar-human .ah-leg-r { position: absolute; top: 90px; width: 14px; height: 44px; border-radius: 0 0 8px 8px; box-shadow: 0 2px 6px rgba(0,0,0,0.12); }
+    .avatar-human .ah-leg-l { left: 24px; }
+    .avatar-human .ah-leg-r { right: 24px; }
+    .avatar-human .ah-slot-head { position: absolute; top: -10px; left: 50%; transform: translateX(-50%); font-size: 1.35rem; filter: drop-shadow(0 1px 2px rgba(0,0,0,0.2)); }
+    .avatar-human .ah-slot-accessory { position: absolute; top: 6px; right: -12px; font-size: 1.1rem; filter: drop-shadow(0 1px 2px rgba(0,0,0,0.2)); }
+    .avatar-preview-wrap { padding: 1.25rem; background: linear-gradient(180deg, var(--bg-soft) 0%, var(--card) 100%); border-radius: var(--radius-lg); margin-bottom: 1.25rem; border: 1px solid rgba(255,255,255,0.06); }
+    .avatar-section .customize-row { margin-bottom: 1rem; }
+    .avatar-section .customize-row label { display: block; font-size: 0.8rem; font-weight: 600; color: var(--text-muted); margin-bottom: 0.4rem; }
+    .avatar-section .customize-section-title { font-size: 0.75rem; font-weight: 700; text-transform: uppercase; letter-spacing: 0.06em; color: var(--accent); margin: 1.25rem 0 0.5rem; padding-bottom: 0.35rem; border-bottom: 1px solid rgba(255,255,255,0.06); }
+    .avatar-section .customize-section-title:first-of-type { margin-top: 0; }
   </style>
 </head>
 <body data-theme="night">
   <div class="container">
+    <div id="appMain" class="hidden">
     <header>
       <button type="button" class="theme-toggle" id="themeToggle" title="모닝/나이트 전환">🌙</button>
       <h1>산책 성장기</h1>
@@ -453,6 +485,7 @@
       </div>
       <p class="title-badge" id="titleBadge">산책러</p>
       <div class="header-right">
+        <button type="button" class="header-auth-btn" id="btnHeaderAuth" aria-label="로그인">🔐 로그인</button>
         <span class="gold-display">🪙 <span id="headerGold">0</span> G</span>
       </div>
     </header>
@@ -468,6 +501,12 @@
 
     <!-- 산책 탭 (걸음 + 코스 + 지도 + 산책로 통합) -->
     <section class="page active" id="page-walk" role="tabpanel">
+      <div class="attendance-card" id="attendanceCard" style="display:none;">
+        <h2 class="walk-title">📅 출석 이벤트</h2>
+        <p class="attendance-desc">매일 출석하고 보상을 받아가요. 7일 연속 시 <strong>위클리 마스터 선물상자</strong> 지급!</p>
+        <div class="attendance-status" id="attendanceStatus"></div>
+        <button type="button" class="btn-attendance" id="btnAttendance" style="display:none;">출석 체크</button>
+      </div>
       <div class="quest-card">
         <h2 class="walk-title">📋 오늘의 퀘스트</h2>
         <p class="quest-desc">완료 후 보상을 수령하면 골드를 받을 수 있어요.</p>
@@ -529,7 +568,7 @@
         <p class="walk-status" id="walkStatus">코스를 선택하고 산책 시작을 누르세요.</p>
       </div>
       <p class="inventory-title">내 산책 코스</p>
-      <div id="routesMap" class="our-map-wrap" style="height:180px;margin-bottom:1rem;border-radius:var(--radius);background:var(--bg-soft);border:1px solid rgba(255,255,255,0.06);overflow:hidden;position:relative;"></div>
+      <div id="routesMap" class="our-map-wrap routes-map-box" style="height:180px;margin-bottom:1rem;"></div>
       <div class="route-list" id="routeList"></div>
     </section>
 
@@ -544,6 +583,7 @@
         <div class="avatar-preview-wrap">
           <div class="avatar-human" id="avatarHuman">
             <div class="ah-head" id="previewHead" style="background:var(--skin,#f5d0b0)"></div>
+            <div class="ah-face"><span class="eye"></span><span class="eye"></span></div>
             <div class="ah-neck" style="background:var(--skin,#f5d0b0)"></div>
             <div class="ah-torso" id="previewBody" style="background:var(--top-color,#6b7280)"></div>
             <div class="ah-arm-l" id="previewArmL" style="background:var(--skin,#f5d0b0)"></div>
@@ -554,12 +594,14 @@
             <div class="ah-slot-accessory" id="previewWeapon"></div>
           </div>
         </div>
+        <p class="customize-section-title">기본 정보</p>
         <div class="customize-row">
           <label>이름</label>
           <input type="text" id="inputAvatarName" placeholder="이름 입력" maxlength="8" />
         </div>
+        <p class="customize-section-title">외형</p>
         <div class="customize-row">
-          <label>피부</label>
+          <label>피부색</label>
           <div style="display:flex;gap:0.35rem;flex-wrap:wrap;">
             <button type="button" class="color-swatch active" data-skin="#f5d0b0" style="background:#f5d0b0" aria-label="피부색 1"></button>
             <button type="button" class="color-swatch" data-skin="#e8b896" style="background:#e8b896" aria-label="피부색 2"></button>
@@ -567,8 +609,9 @@
             <button type="button" class="color-swatch" data-skin="#c4956a" style="background:#c4956a" aria-label="피부색 4"></button>
           </div>
         </div>
+        <p class="customize-section-title">머리</p>
         <div class="customize-row">
-          <label>머리</label>
+          <label>스타일</label>
           <select id="selectHair">
             <option value="short">짧은 머리</option>
             <option value="long">긴 머리</option>
@@ -577,7 +620,7 @@
           </select>
         </div>
         <div class="customize-row">
-          <label>머리색</label>
+          <label>머리 색</label>
           <div style="display:flex;gap:0.35rem;flex-wrap:wrap;">
             <button type="button" class="color-swatch hair-color active" data-hair="#4a3728" style="background:#4a3728"></button>
             <button type="button" class="color-swatch hair-color" data-hair="#2c1810" style="background:#2c1810"></button>
@@ -676,6 +719,36 @@
         </div>
       </div>
     </section>
+    </div>
+
+    <!-- 로그인/회원가입 (비로그인 시 첫 화면, 로그인 후 메인만 표시) -->
+    <div class="auth-overlay auth-gate" id="authOverlay" role="dialog" aria-modal="true" aria-labelledby="authTitle">
+      <div class="auth-modal">
+        <div class="auth-tabs">
+          <button type="button" class="auth-tab active" data-auth-tab="login">로그인</button>
+          <button type="button" class="auth-tab" data-auth-tab="signup">회원가입</button>
+        </div>
+        <h2 class="auth-title" id="authTitle">로그인</h2>
+        <div id="authLoginPanel" class="auth-panel">
+          <label>닉네임</label>
+          <input type="text" id="authLoginNick" placeholder="닉네임" maxlength="12" />
+          <label>비밀번호</label>
+          <input type="password" id="authLoginPw" placeholder="비밀번호" />
+          <button type="button" class="btn-auth-submit" id="btnAuthLogin">로그인</button>
+        </div>
+        <div id="authSignupPanel" class="auth-panel" style="display:none;">
+          <label>닉네임</label>
+          <input type="text" id="authSignupNick" placeholder="2~12자" maxlength="12" />
+          <label>비밀번호</label>
+          <input type="password" id="authSignupPw" placeholder="6자 이상" />
+          <label>비밀번호 확인</label>
+          <input type="password" id="authSignupPw2" placeholder="다시 입력" />
+          <button type="button" class="btn-auth-submit" id="btnAuthSignup">가입하기</button>
+        </div>
+        <p class="auth-hint">※ 비밀번호는 서버에서 암호화되어 저장되며, 게임 데이터는 DB에 동기화됩니다.</p>
+        <button type="button" class="auth-close" id="authClose" aria-label="닫기">✕</button>
+      </div>
+    </div>
   </div>
 
   <div class="toast" id="toast" role="alert"></div>
@@ -683,6 +756,11 @@
   <script>
 (function () {
   const GOAL = 10000;
+  var API_BASE = (typeof location !== 'undefined' && location.protocol === 'file:') ? 'http://localhost:3000' : '';
+  const TOKEN_KEY = 'walk_token';
+  function getAuthToken() { try { return localStorage.getItem(TOKEN_KEY); } catch (e) { return null; } }
+  function setAuthToken(t) { try { if (t) localStorage.setItem(TOKEN_KEY, t); else localStorage.removeItem(TOKEN_KEY); } catch (e) {} }
+  function clearAuthToken() { setAuthToken(null); }
   const STORAGE_KEYS = {
     steps: 'pedometer_steps',
     date: 'pedometer_date',
@@ -703,8 +781,15 @@
     storage: 'walk_storage',
     questProgress: 'walk_quest_progress',
     questDate: 'walk_quest_date',
-    sharedDate: 'walk_shared_date'
+    sharedDate: 'walk_shared_date',
+    user: 'walk_user',
+    loggedIn: 'walk_logged_in',
+    attendanceDate: 'walk_attendance_date',
+    attendanceStreak: 'walk_attendance_streak'
   };
+  var ATTENDANCE_DAILY_GOLD = [10, 15, 20, 25, 30, 40];
+  var ATTENDANCE_7DAY_BOX_NAME = '위클리 마스터 선물상자';
+  var ATTENDANCE_7DAY_GOLD = 100;
   const XP_PER_KM = 100;
   const GACHA_COST = 30;
   const GACHA_PREMIUM_COST = 60;
@@ -873,9 +958,10 @@
   const SLOT_ORDER = ['shoes', 'watch', 'earphones', 'bag', 'top', 'bottom', 'guard', 'glove', 'outer'];
   const SLOT_LABELS = { shoes: '👟 신발', watch: '⌚ 시계/디바이스', earphones: '🎧 이어폰', bag: '🎒 가방/러닝베스트', top: '👕 상의', bottom: '👖 하의', guard: '🛡 보호대/컴프레션', glove: '🧤 장갑', outer: '🧥 아우터' };
   var TIER_WEIGHTS = { standard: 50, pro: 30, prime: 15, signature: 5 };
-  var SLOT_BONUS_TYPE = { shoes: 'distance', watch: 'gold', earphones: 'gold', bag: 'step', top: 'xp', bottom: 'step', guard: 'step', glove: 'step', outer: 'xp' };
+  /* 걸음 보너스 제거: 목표 걸음/거리 정확도 유지를 위해 step 보너스 없음 */
+  var SLOT_BONUS_TYPE = { shoes: 'distance', watch: 'gold', earphones: 'gold', bag: 'xp', top: 'xp', bottom: 'xp', guard: 'xp', glove: 'xp', outer: 'xp' };
   var TIER_PERCENT = { standard: 1, pro: 2, prime: 3, signature: 5 };
-  var SLOT_BONUS_LABEL = { xp: 'XP 보너스', step: '걸음 보너스', distance: '이동 거리', gold: '골드 보너스' };
+  var SLOT_BONUS_LABEL = { xp: 'XP 보너스', distance: '이동 거리', gold: '골드 보너스' };
   function itemSlot(item) {
     if (!item || !item.id) return 'top';
     var id = item.id.replace(/_\d+$/, '');
@@ -982,6 +1068,10 @@
   var gold = STARTING_GOLD;
   var totalWalkDistanceKm = 0;
   var currentTitleId = 'walker';
+  var userProfile = null;
+  var isLoggedIn = false;
+  var lastAttendanceDate = '';
+  var attendanceStreak = 0;
 
   function todayStr() {
     const d = new Date();
@@ -1080,6 +1170,12 @@
       var sd = localStorage.getItem(STORAGE_KEYS.sharedDate);
       sharedToday = sd === todayStr();
     } catch (e) {}
+    try {
+      var ad = localStorage.getItem(STORAGE_KEYS.attendanceDate);
+      var as = localStorage.getItem(STORAGE_KEYS.attendanceStreak);
+      if (ad) lastAttendanceDate = ad;
+      if (as != null) attendanceStreak = parseInt(as, 10) || 0;
+    } catch (e) {}
     var th = localStorage.getItem(STORAGE_KEYS.theme);
     if (th === 'morning' || th === 'night') document.body.setAttribute('data-theme', th);
     lastDate = todayStr();
@@ -1107,14 +1203,103 @@
       localStorage.setItem(STORAGE_KEYS.questProgress, String(questGachaCount));
       localStorage.setItem('walk_quest_claimed', JSON.stringify(questClaimed));
       if (sharedToday) localStorage.setItem(STORAGE_KEYS.sharedDate, todayStr());
+      localStorage.setItem(STORAGE_KEYS.attendanceDate, lastAttendanceDate);
+      localStorage.setItem(STORAGE_KEYS.attendanceStreak, String(attendanceStreak));
     } catch (e) {}
+    if (isLoggedIn && getAuthToken()) syncGameStateToServer();
+  }
+  function getGameStatePayload() {
+    return {
+      steps: steps,
+      date: todayStr(),
+      lifetimeSteps: lifetimeSteps,
+      avatar: avatar,
+      inventory: inventory,
+      equipped: equipped,
+      storage: storage,
+      claimedRoutes: claimedRoutes,
+      courseGoalKm: courseGoalKm,
+      totalXp: totalXp,
+      supplyDateToday: supplyDateToday,
+      supplyCountToday: supplyCountToday,
+      userRoutes: userRoutes,
+      gold: gold,
+      totalWalkDistanceKm: totalWalkDistanceKm,
+      currentTitleId: currentTitleId,
+      questDate: todayStr(),
+      questProgress: questGachaCount,
+      questClaimed: questClaimed,
+      sharedDate: sharedToday ? todayStr() : '',
+      lastAttendanceDate: lastAttendanceDate,
+      attendanceStreak: attendanceStreak
+    };
+  }
+  function applyGameState(obj) {
+    if (!obj || typeof obj !== 'object') return;
+    if (obj.steps != null) steps = obj.steps;
+    if (obj.date != null) lastDate = obj.date;
+    if (obj.lifetimeSteps != null) lifetimeSteps = obj.lifetimeSteps;
+    if (obj.avatar && typeof obj.avatar === 'object') avatar = { ...avatar, ...obj.avatar };
+    if (Array.isArray(obj.inventory)) inventory = obj.inventory;
+    if (obj.equipped && typeof obj.equipped === 'object') { Object.keys(obj.equipped).forEach(function (k) { if (obj.equipped[k] != null) equipped[k] = obj.equipped[k]; }); }
+    if (Array.isArray(obj.storage)) storage = obj.storage;
+    if (Array.isArray(obj.claimedRoutes)) claimedRoutes = obj.claimedRoutes;
+    if (obj.courseGoalKm != null) courseGoalKm = obj.courseGoalKm;
+    if (obj.totalXp != null) totalXp = obj.totalXp;
+    if (obj.supplyDateToday != null) supplyDateToday = obj.supplyDateToday;
+    if (obj.supplyCountToday != null) supplyCountToday = obj.supplyCountToday;
+    if (Array.isArray(obj.userRoutes)) userRoutes = obj.userRoutes;
+    if (obj.gold != null) gold = obj.gold;
+    if (obj.totalWalkDistanceKm != null) totalWalkDistanceKm = obj.totalWalkDistanceKm;
+    if (obj.currentTitleId != null) currentTitleId = obj.currentTitleId;
+    if (obj.questProgress != null) questGachaCount = obj.questProgress;
+    if (obj.questClaimed && typeof obj.questClaimed === 'object') questClaimed = obj.questClaimed;
+    if (obj.sharedDate != null) sharedToday = obj.sharedDate === todayStr();
+    if (obj.lastAttendanceDate != null) lastAttendanceDate = obj.lastAttendanceDate;
+    if (obj.attendanceStreak != null) attendanceStreak = obj.attendanceStreak;
+  }
+  function syncGameStateToServer() {
+    var token = getAuthToken();
+    if (!token) return;
+    var payload = getGameStatePayload();
+    fetch(API_BASE + '/api/user/data', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', 'Authorization': 'Bearer ' + token },
+      body: JSON.stringify(payload)
+    }).catch(function () {});
+  }
+  function initAuth() {
+    var token = getAuthToken();
+    if (!token) return Promise.resolve();
+    return fetch(API_BASE + '/api/user/me', { headers: { 'Authorization': 'Bearer ' + token } })
+      .then(function (r) {
+        if (!r.ok) { clearAuthToken(); return null; }
+        return r.json();
+      })
+      .then(function (me) {
+        if (!me) return null;
+        userProfile = { id: me.id, nickname: me.nickname };
+        isLoggedIn = true;
+        return fetch(API_BASE + '/api/user/data', { headers: { 'Authorization': 'Bearer ' + token } });
+      })
+      .then(function (r) {
+        if (!r) return null;
+        return r.json();
+      })
+      .then(function (body) {
+        if (body && body.data) {
+          try {
+            var data = typeof body.data === 'string' ? JSON.parse(body.data) : body.data;
+            applyGameState(data);
+          } catch (e) {}
+        }
+      })
+      .catch(function () { clearAuthToken(); });
   }
 
   function addStep() {
-    var bonus = getEquipmentBonus().step / 100;
     steps++;
     lifetimeSteps++;
-    if (bonus > 0 && Math.random() < bonus) { steps++; lifetimeSteps++; }
     saveAll();
     renderSteps();
     checkRouteRewards();
@@ -1438,18 +1623,18 @@
     svg.setAttribute('preserveAspectRatio', 'xMidYMid meet');
     var grid = document.createElementNS('http://www.w3.org/2000/svg', 'g');
     grid.setAttribute('class', 'our-map-grid');
-    for (var i = 0; i <= 8; i++) {
+    for (var i = 0; i <= 10; i++) {
       var v = document.createElementNS('http://www.w3.org/2000/svg', 'line');
-      v.setAttribute('x1', (i * w / 8));
+      v.setAttribute('x1', (i * w / 10));
       v.setAttribute('y1', 0);
-      v.setAttribute('x2', (i * w / 8));
+      v.setAttribute('x2', (i * w / 10));
       v.setAttribute('y2', h);
       grid.appendChild(v);
       var hor = document.createElementNS('http://www.w3.org/2000/svg', 'line');
       hor.setAttribute('x1', 0);
-      hor.setAttribute('y1', (i * h / 8));
+      hor.setAttribute('y1', (i * h / 10));
       hor.setAttribute('x2', w);
-      hor.setAttribute('y2', (i * h / 8));
+      hor.setAttribute('y2', (i * h / 10));
       grid.appendChild(hor);
     }
     svg.appendChild(grid);
@@ -1459,12 +1644,25 @@
     svg.appendChild(path);
     var charG = document.createElementNS('http://www.w3.org/2000/svg', 'g');
     charG.setAttribute('class', 'our-map-char');
-    var charCircle = document.createElementNS('http://www.w3.org/2000/svg', 'circle');
-    charCircle.setAttribute('r', 14);
-    charG.appendChild(charCircle);
-    var charText = document.createElementNS('http://www.w3.org/2000/svg', 'text');
-    charText.textContent = '🚶';
-    charG.appendChild(charText);
+    var shadow = document.createElementNS('http://www.w3.org/2000/svg', 'ellipse');
+    shadow.setAttribute('class', 'char-shadow');
+    shadow.setAttribute('cx', 0);
+    shadow.setAttribute('cy', 10);
+    shadow.setAttribute('rx', 12);
+    shadow.setAttribute('ry', 4);
+    charG.appendChild(shadow);
+    var charHead = document.createElementNS('http://www.w3.org/2000/svg', 'circle');
+    charHead.setAttribute('class', 'char-head');
+    charHead.setAttribute('r', 7);
+    charHead.setAttribute('cx', 0);
+    charHead.setAttribute('cy', -8);
+    charG.appendChild(charHead);
+    var charBody = document.createElementNS('http://www.w3.org/2000/svg', 'circle');
+    charBody.setAttribute('class', 'char-body');
+    charBody.setAttribute('r', 10);
+    charBody.setAttribute('cx', 0);
+    charBody.setAttribute('cy', 6);
+    charG.appendChild(charBody);
     svg.appendChild(charG);
     el.appendChild(svg);
     var label = document.createElement('span');
@@ -1491,8 +1689,6 @@
     walkMapPathEl.setAttribute('d', d);
     var last = pts[pts.length - 1];
     walkMapCharEl.setAttribute('transform', 'translate(' + last.x + ',' + last.y + ')');
-    walkMapCharEl.querySelector('circle').setAttribute('r', 14);
-    walkMapCharEl.querySelector('text').setAttribute('x', 0).setAttribute('y', 0);
   }
 
   function renderSteps() {
@@ -1532,6 +1728,7 @@
       renderRouteSelect();
       renderRoutes();
       renderQuests();
+      renderAttendance();
       initWalkMap();
       setTimeout(function () { initWalkMap(); updateWalkMap(); }, 150);
     }
@@ -1694,6 +1891,196 @@
     renderQuests();
     showToast('공유 감사해요! +40 G');
   }
+  function renderHeaderAuth() {
+    var btn = document.getElementById('btnHeaderAuth');
+    if (!btn) return;
+    if (isLoggedIn && userProfile) {
+      btn.textContent = userProfile.nickname;
+      btn.classList.add('logged-in');
+      btn.setAttribute('aria-label', '로그아웃');
+    } else {
+      btn.textContent = '🔐 로그인';
+      btn.classList.remove('logged-in');
+      btn.setAttribute('aria-label', '로그인');
+    }
+    renderAuthGate();
+  }
+  function renderAuthGate() {
+    var appMain = document.getElementById('appMain');
+    var authOverlay = document.getElementById('authOverlay');
+    if (!appMain || !authOverlay) return;
+    if (isLoggedIn) {
+      appMain.classList.remove('hidden');
+      authOverlay.style.display = 'none';
+      authOverlay.classList.remove('auth-gate');
+    } else {
+      appMain.classList.add('hidden');
+      authOverlay.style.display = 'flex';
+      authOverlay.classList.add('auth-gate');
+    }
+  }
+  function openAuthModal() {
+    var overlay = document.getElementById('authOverlay');
+    if (overlay) { overlay.style.display = 'flex'; overlay.classList.remove('auth-gate'); }
+    document.getElementById('authLoginPanel').style.display = 'block';
+    document.getElementById('authSignupPanel').style.display = 'none';
+    document.querySelectorAll('.auth-tab').forEach(function(t){ t.classList.remove('active'); if (t.getAttribute('data-auth-tab') === 'login') t.classList.add('active'); });
+    document.getElementById('authTitle').textContent = '로그인';
+  }
+  function closeAuthModal() {
+    var overlay = document.getElementById('authOverlay');
+    if (overlay && isLoggedIn) overlay.style.display = 'none';
+    if (overlay && !isLoggedIn) { overlay.style.display = 'flex'; overlay.classList.add('auth-gate'); }
+  }
+  function doLogin() {
+    var nick = (document.getElementById('authLoginNick') || {}).value.trim();
+    var pw = (document.getElementById('authLoginPw') || {}).value;
+    if (!nick || !pw) { showToast('닉네임과 비밀번호를 입력해 주세요.'); return; }
+    fetch(API_BASE + '/api/auth/login', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ nickname: nick, password: pw })
+    }).then(function (r) { return r.json().then(function (j) { return { ok: r.ok, body: j }; }); })
+      .then(function (x) {
+        if (!x.ok) { showToast(x.body.error || '로그인에 실패했어요.'); return; }
+        setAuthToken(x.body.token);
+        userProfile = x.body.user;
+        isLoggedIn = true;
+        return fetch(API_BASE + '/api/user/data', { headers: { 'Authorization': 'Bearer ' + x.body.token } });
+      })
+      .then(function (r) {
+        if (!r) return;
+        return r.json();
+      })
+      .then(function (body) {
+        if (body && body.data) {
+          try {
+            var data = typeof body.data === 'string' ? JSON.parse(body.data) : body.data;
+            applyGameState(data);
+          } catch (e) {}
+        }
+        saveAll();
+        closeAuthModal();
+        renderHeaderAuth();
+        renderAttendance();
+        var card = document.getElementById('attendanceCard');
+        if (card) card.style.display = 'block';
+        showToast(userProfile.nickname + '님 환영해요!');
+      })
+      .catch(function () { showToast('서버에 연결할 수 없어요.'); });
+  }
+  function doSignup() {
+    var nick = (document.getElementById('authSignupNick') || {}).value.trim();
+    var pw = (document.getElementById('authSignupPw') || {}).value;
+    var pw2 = (document.getElementById('authSignupPw2') || {}).value;
+    if (!nick || nick.length < 2) { showToast('닉네임은 2자 이상이에요.'); return; }
+    if (!pw || pw.length < 6) { showToast('비밀번호는 6자 이상이에요.'); return; }
+    if (pw !== pw2) { showToast('비밀번호가 일치하지 않아요.'); return; }
+    fetch(API_BASE + '/api/auth/signup', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ nickname: nick, password: pw })
+    }).then(function (r) { return r.json().then(function (j) { return { ok: r.ok, body: j }; }); })
+      .then(function (x) {
+        if (!x.ok) { showToast(x.body.error || '가입에 실패했어요.'); return; }
+        setAuthToken(x.body.token);
+        userProfile = x.body.user;
+        isLoggedIn = true;
+        saveAll();
+        closeAuthModal();
+        renderHeaderAuth();
+        renderAttendance();
+        var card = document.getElementById('attendanceCard');
+        if (card) card.style.display = 'block';
+        showToast('가입 완료! ' + userProfile.nickname + '님 환영해요.');
+      })
+      .catch(function () { showToast('서버에 연결할 수 없어요.'); });
+  }
+  function doLogout() {
+    clearAuthToken();
+    userProfile = null;
+    isLoggedIn = false;
+    saveAll();
+    renderHeaderAuth();
+    renderAttendance();
+    var card = document.getElementById('attendanceCard');
+    if (card) card.style.display = 'none';
+    showToast('로그아웃되었어요.');
+  }
+  function renderAttendance() {
+    var card = document.getElementById('attendanceCard');
+    var statusEl = document.getElementById('attendanceStatus');
+    var btn = document.getElementById('btnAttendance');
+    if (!card || !statusEl) return;
+    if (!isLoggedIn) {
+      card.style.display = 'none';
+      return;
+    }
+    card.style.display = 'block';
+    var today = todayStr();
+    var already = lastAttendanceDate === today;
+    if (already) {
+      statusEl.textContent = '오늘 출석 완료! 연속 ' + attendanceStreak + '일';
+      if (btn) btn.style.display = 'none';
+    } else {
+      var nextDay = attendanceStreak + 1;
+      if (nextDay <= 7) {
+        statusEl.textContent = '오늘 출석하면 ' + (nextDay === 7 ? ATTENDANCE_7DAY_BOX_NAME : nextDay + '일차 보상') + ' 받기';
+        if (btn) { btn.style.display = 'block'; btn.textContent = nextDay === 7 ? '출석하고 선물상자 받기' : '출석 체크'; }
+      } else {
+        statusEl.textContent = '연속 ' + attendanceStreak + '일 달성! 내일 다시 1일차부터 시작해요.';
+        if (btn) btn.style.display = 'none';
+      }
+    }
+  }
+  function doAttendance() {
+    if (!isLoggedIn) { showToast('로그인 후 출석할 수 있어요.'); return; }
+    var today = todayStr();
+    if (lastAttendanceDate === today) { showToast('오늘은 이미 출석했어요.'); return; }
+    var yesterday = (function(){
+      var d = new Date(); d.setDate(d.getDate() - 1);
+      return d.getFullYear() + '-' + String(d.getMonth() + 1).padStart(2, '0') + '-' + String(d.getDate()).padStart(2, '0');
+    })();
+    if (lastAttendanceDate !== yesterday && lastAttendanceDate !== '') attendanceStreak = 0;
+    attendanceStreak++;
+    lastAttendanceDate = today;
+    if (attendanceStreak <= 6) {
+      var reward = ATTENDANCE_DAILY_GOLD[attendanceStreak - 1] || 10;
+      gold += reward;
+      saveAll();
+      renderGold();
+      renderAttendance();
+      showToast('출석 ' + attendanceStreak + '일차! +' + reward + ' G');
+    } else {
+      attendanceStreak = 7;
+      saveAll();
+      openWeekMasterBox();
+    }
+  }
+  function openWeekMasterBox() {
+    if (Math.random() < 0.5) {
+      gold += ATTENDANCE_7DAY_GOLD;
+      saveAll();
+      renderGold();
+      renderAttendance();
+      showToast(ATTENDANCE_7DAY_BOX_NAME + '에서 ' + ATTENDANCE_7DAY_GOLD + ' G 획득!');
+    } else {
+      var item = pickItemByTierWeight(true);
+      var rarity = rollRarityPremium();
+      var newItem = { id: item.id + '_' + Date.now(), name: item.name, type: item.type, emoji: item.emoji, rarity: rarity, enhance: 0, tier: item.tier || 'standard' };
+      inventory.push(newItem);
+      saveAll();
+      renderInventory();
+      renderAttendance();
+      var tierLabel = TIER_LABELS[newItem.tier] || newItem.tier;
+      var rarityLabel = (RARITY_NAMES.indexOf(rarity) >= 0 ? rarity : 'common');
+      showToast(getItemIcon(newItem) + ' ' + newItem.name + ' (' + tierLabel + ' · ' + rarityLabel + ') 획득!');
+    }
+    attendanceStreak = 0;
+    saveAll();
+    renderAttendance();
+    showToast('공유 감사해요! +40 G');
+  }
 
   function renderAvatar() {
     var nameEl = document.getElementById('avatarName');
@@ -1835,8 +2222,7 @@
       if (b.xp > 0) parts.push('XP +' + b.xp + '%');
       if (b.distance > 0) parts.push('이동 거리 +' + b.distance + '%');
       if (b.gold > 0) parts.push('골드 +' + b.gold + '%');
-      if (b.step > 0) parts.push('걸음 +' + b.step + '%');
-      sumEl.innerHTML = parts.length ? '<strong>장비 보너스</strong>: ' + parts.join(', ') : '<strong>장비 보너스</strong>: 착용 장비에 따라 XP·거리·골드 보너스 적용';
+      sumEl.innerHTML = parts.length ? '<strong>장비 보너스</strong>: ' + parts.join(', ') : '<strong>장비 보너스</strong>: 착용 장비에 따라 XP·거리·골드 보너스 적용 (걸음 수는 정확한 기록 유지를 위해 보너스 없음)';
     }
   }
 
@@ -2013,6 +2399,30 @@
     if (btnShare) btnShare.addEventListener('click', doShare);
     var btnEnhance = document.getElementById('btnEnhance');
     if (btnEnhance) btnEnhance.addEventListener('click', tryEnhance);
+    var btnHeaderAuth = document.getElementById('btnHeaderAuth');
+    if (btnHeaderAuth) btnHeaderAuth.addEventListener('click', function() {
+      if (isLoggedIn) { if (confirm('로그아웃할까요?')) doLogout(); }
+      else openAuthModal();
+    });
+    document.querySelectorAll('.auth-tab').forEach(function(t) {
+      t.addEventListener('click', function() {
+        var tab = this.getAttribute('data-auth-tab');
+        document.querySelectorAll('.auth-tab').forEach(function(x){ x.classList.toggle('active', x.getAttribute('data-auth-tab') === tab); });
+        document.getElementById('authLoginPanel').style.display = tab === 'login' ? 'block' : 'none';
+        document.getElementById('authSignupPanel').style.display = tab === 'signup' ? 'block' : 'none';
+        document.getElementById('authTitle').textContent = tab === 'login' ? '로그인' : '회원가입';
+      });
+    });
+    var authClose = document.getElementById('authClose');
+    if (authClose) authClose.addEventListener('click', closeAuthModal);
+    var authOverlay = document.getElementById('authOverlay');
+    if (authOverlay) authOverlay.addEventListener('click', function(e) { if (e.target === authOverlay && !authOverlay.classList.contains('auth-gate')) closeAuthModal(); });
+    var btnAuthLogin = document.getElementById('btnAuthLogin');
+    if (btnAuthLogin) btnAuthLogin.addEventListener('click', doLogin);
+    var btnAuthSignup = document.getElementById('btnAuthSignup');
+    if (btnAuthSignup) btnAuthSignup.addEventListener('click', doSignup);
+    var btnAttendance = document.getElementById('btnAttendance');
+    if (btnAttendance) btnAttendance.addEventListener('click', doAttendance);
   }
 
   var lastAcc = 0, lastPeakTime = 0;
@@ -2056,24 +2466,28 @@
   function init() {
     attachListeners();
     loadAll();
-    checkRouteRewards();
-    renderSteps();
-    renderWalk();
-    renderAvatar();
-    renderRoutes();
-    renderStorage();
-    renderQuests();
-    renderEquipped();
-    renderInventory();
-    renderStory();
-    renderLevel();
-    renderRouteSelect();
-    renderAchievements();
-    renderGold();
-    renderEnhanceSelect();
-    var themeToggle = document.getElementById('themeToggle');
-    if (themeToggle && document.body.getAttribute('data-theme') === 'morning') themeToggle.textContent = '☀️';
-    initSensorAndStatus();
+    initAuth().then(function () {
+      checkRouteRewards();
+      renderSteps();
+      renderWalk();
+      renderAvatar();
+      renderRoutes();
+      renderStorage();
+      renderQuests();
+      renderHeaderAuth();
+      renderAttendance();
+      renderEquipped();
+      renderInventory();
+      renderStory();
+      renderLevel();
+      renderRouteSelect();
+      renderAchievements();
+      renderGold();
+      renderEnhanceSelect();
+      var themeToggle = document.getElementById('themeToggle');
+      if (themeToggle && document.body.getAttribute('data-theme') === 'morning') themeToggle.textContent = '☀️';
+      initSensorAndStatus();
+    });
   }
 
   if (document.readyState === 'loading') {

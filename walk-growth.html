@@ -114,6 +114,10 @@
     .btn-auth-submit { width: 100%; margin-top: 1rem; padding: 0.65rem; border: none; border-radius: var(--radius); background: linear-gradient(145deg, var(--accent), #10b981); color: var(--bg); font-weight: 600; font-family: inherit; cursor: pointer; font-size: 0.9rem; }
     .auth-hint { font-size: 0.7rem; color: var(--text-muted); margin-top: 0.75rem; }
     .auth-close { position: absolute; top: 0.75rem; right: 0.75rem; width: 28px; height: 28px; border: none; border-radius: 50%; background: var(--bg-soft); color: var(--text-muted); cursor: pointer; font-size: 1rem; line-height: 1; }
+    .auth-overlay.auth-gate { align-items: center; justify-content: center; }
+    .auth-overlay.auth-gate .auth-close { display: none; }
+    #appMain { display: block; }
+    #appMain.hidden { display: none !important; }
     .attendance-card { background: linear-gradient(145deg, var(--card), rgba(251,191,36,0.06)); border: 1px solid rgba(251,191,36,0.2); border-radius: var(--radius-lg); padding: 1rem; margin-bottom: 1rem; box-shadow: var(--shadow); }
     .attendance-desc { font-size: 0.8rem; color: var(--text-muted); margin-bottom: 0.75rem; }
     .attendance-status { font-size: 0.9rem; color: var(--text); margin-bottom: 0.5rem; }
@@ -466,10 +470,47 @@
     .avatar-section .customize-row label { display: block; font-size: 0.8rem; font-weight: 600; color: var(--text-muted); margin-bottom: 0.4rem; }
     .avatar-section .customize-section-title { font-size: 0.75rem; font-weight: 700; text-transform: uppercase; letter-spacing: 0.06em; color: var(--accent); margin: 1.25rem 0 0.5rem; padding-bottom: 0.35rem; border-bottom: 1px solid rgba(255,255,255,0.06); }
     .avatar-section .customize-section-title:first-of-type { margin-top: 0; }
+
+    /* 모바일 최적화 */
+    @media (max-width: 480px) {
+      .container { padding-left: 0.75rem; padding-right: 0.75rem; }
+      header { padding-top: 0.5rem; }
+      h1 { font-size: 1.3rem; }
+      .step-value { font-size: 2.75rem; }
+      .btn-add { width: 64px; height: 64px; font-size: 1.8rem; }
+      .tab-btn { min-width: 2.5rem; padding: 0.5rem 0.25rem; font-size: 0.7rem; }
+      .tab-btn .tab-emoji { font-size: 1.25rem; }
+      .step-card, .walk-card, .avatar-section, .story-section { padding: 1.25rem; }
+      .auth-modal { padding: 1.25rem; max-width: 100%; }
+      .btn-auth-submit, .btn-gacha, .btn-gacha-premium, .btn-share, .btn-attendance { min-height: 44px; padding: 0.75rem; }
+      .btn-reset, .btn-claim { min-height: 36px; padding: 0.5rem 0.9rem; }
+      .header-auth-btn { min-height: 36px; padding: 0.4rem 0.6rem; font-size: 0.75rem; }
+      .theme-toggle { width: 40px; height: 40px; }
+      input[type="text"], input[type="password"], input[type="number"], select { min-height: 44px; font-size: 16px; }
+      .inv-item { min-height: 80px; }
+      .equipped-slot { min-height: 5rem; }
+    }
+    @media (hover: none) and (pointer: coarse) {
+      .btn-add:hover, .btn-reset:hover, .tab-btn:hover, .header-auth-btn:hover { transform: none; }
+      .btn-add:active { transform: scale(0.95); }
+      .btn-reset:active, .tab-btn:active { opacity: 0.7; }
+    }
+    html { -webkit-overflow-scrolling: touch; height: 100%; }
+    body { -webkit-tap-highlight-color: transparent; height: 100%; overflow-y: auto; }
+    button, a, input, select, .tab-btn, .inv-item, .equipped-slot { -webkit-tap-highlight-color: rgba(255,255,255,0.1); touch-action: manipulation; }
+    input, textarea, select { font-size: 16px; }
+    @supports (-webkit-touch-callout: none) {
+      input, textarea, select { font-size: 16px; }
+    }
+    @media (max-width: 480px) {
+      .auth-overlay { padding: 0.5rem; align-items: flex-start; padding-top: max(1rem, env(safe-area-inset-top)); }
+      .auth-modal { margin-top: auto; margin-bottom: auto; max-height: calc(100vh - 2rem); overflow-y: auto; }
+    }
   </style>
 </head>
 <body data-theme="night">
   <div class="container">
+    <div id="appMain" class="hidden">
     <header>
       <button type="button" class="theme-toggle" id="themeToggle" title="모닝/나이트 전환">🌙</button>
       <h1>산책 성장기</h1>
@@ -484,35 +525,6 @@
         <span class="gold-display">🪙 <span id="headerGold">0</span> G</span>
       </div>
     </header>
-
-    <!-- 로그인/회원가입 모달 -->
-    <div class="auth-overlay" id="authOverlay" role="dialog" aria-modal="true" aria-labelledby="authTitle" style="display:none;">
-      <div class="auth-modal">
-        <div class="auth-tabs">
-          <button type="button" class="auth-tab active" data-auth-tab="login">로그인</button>
-          <button type="button" class="auth-tab" data-auth-tab="signup">회원가입</button>
-        </div>
-        <h2 class="auth-title" id="authTitle">로그인</h2>
-        <div id="authLoginPanel" class="auth-panel">
-          <label>닉네임</label>
-          <input type="text" id="authLoginNick" placeholder="닉네임" maxlength="12" />
-          <label>비밀번호</label>
-          <input type="password" id="authLoginPw" placeholder="비밀번호" />
-          <button type="button" class="btn-auth-submit" id="btnAuthLogin">로그인</button>
-        </div>
-        <div id="authSignupPanel" class="auth-panel" style="display:none;">
-          <label>닉네임</label>
-          <input type="text" id="authSignupNick" placeholder="2~12자" maxlength="12" />
-          <label>비밀번호</label>
-          <input type="password" id="authSignupPw" placeholder="6자 이상" />
-          <label>비밀번호 확인</label>
-          <input type="password" id="authSignupPw2" placeholder="다시 입력" />
-          <button type="button" class="btn-auth-submit" id="btnAuthSignup">가입하기</button>
-        </div>
-        <p class="auth-hint">※ 비밀번호는 서버에서 암호화되어 저장되며, 게임 데이터는 DB에 동기화됩니다.</p>
-        <button type="button" class="auth-close" id="authClose" aria-label="닫기">✕</button>
-      </div>
-    </div>
 
     <nav class="tab-nav" role="tablist">
       <button type="button" class="tab-btn active" data-tab="walk" aria-selected="true"><span class="tab-emoji">🚶</span>산책</button>
@@ -573,9 +585,9 @@
         </div>
         <div class="route-create-card" id="routeCreateCard" style="display:none;">
           <label class="course-label">코스 이름</label>
-          <input type="text" id="newRouteName" placeholder="예: 동네 한 바퀴" class="course-input" maxlength="20" />
+          <input type="text" id="newRouteName" placeholder="예: 동네 한 바퀴" class="course-input" maxlength="20" inputmode="text" />
           <label class="course-label">목표 거리 (km, 최소 0.5)</label>
-          <input type="number" id="newRouteGoalKm" min="0.5" max="50" step="0.5" value="1" class="course-input" />
+          <input type="number" id="newRouteGoalKm" min="0.5" max="50" step="0.5" value="1" class="course-input" inputmode="decimal" />
           <button type="button" class="btn-walk-start" id="btnSaveRoute" style="margin-top:0.5rem;">저장</button>
         </div>
         <div class="walk-actions">
@@ -621,7 +633,7 @@
         <p class="customize-section-title">기본 정보</p>
         <div class="customize-row">
           <label>이름</label>
-          <input type="text" id="inputAvatarName" placeholder="이름 입력" maxlength="8" />
+          <input type="text" id="inputAvatarName" placeholder="이름 입력" maxlength="8" inputmode="text" autocomplete="name" />
         </div>
         <p class="customize-section-title">외형</p>
         <div class="customize-row">
@@ -743,6 +755,36 @@
         </div>
       </div>
     </section>
+    </div>
+
+    <!-- 로그인/회원가입 (비로그인 시 첫 화면, 로그인 후 메인만 표시) -->
+    <div class="auth-overlay auth-gate" id="authOverlay" role="dialog" aria-modal="true" aria-labelledby="authTitle">
+      <div class="auth-modal">
+        <div class="auth-tabs">
+          <button type="button" class="auth-tab active" data-auth-tab="login">로그인</button>
+          <button type="button" class="auth-tab" data-auth-tab="signup">회원가입</button>
+        </div>
+        <h2 class="auth-title" id="authTitle">로그인</h2>
+        <div id="authLoginPanel" class="auth-panel">
+          <label>닉네임</label>
+          <input type="text" id="authLoginNick" placeholder="닉네임" maxlength="12" inputmode="text" autocomplete="username" />
+          <label>비밀번호</label>
+          <input type="password" id="authLoginPw" placeholder="비밀번호" autocomplete="current-password" />
+          <button type="button" class="btn-auth-submit" id="btnAuthLogin">로그인</button>
+        </div>
+        <div id="authSignupPanel" class="auth-panel" style="display:none;">
+          <label>닉네임</label>
+          <input type="text" id="authSignupNick" placeholder="2~12자" maxlength="12" inputmode="text" autocomplete="username" />
+          <label>비밀번호</label>
+          <input type="password" id="authSignupPw" placeholder="6자 이상" autocomplete="new-password" />
+          <label>비밀번호 확인</label>
+          <input type="password" id="authSignupPw2" placeholder="다시 입력" autocomplete="new-password" />
+          <button type="button" class="btn-auth-submit" id="btnAuthSignup">가입하기</button>
+        </div>
+        <p class="auth-hint">※ 비밀번호는 서버에서 암호화되어 저장되며, 게임 데이터는 DB에 동기화됩니다.</p>
+        <button type="button" class="auth-close" id="authClose" aria-label="닫기">✕</button>
+      </div>
+    </div>
   </div>
 
   <div class="toast" id="toast" role="alert"></div>
@@ -1897,10 +1939,25 @@
       btn.classList.remove('logged-in');
       btn.setAttribute('aria-label', '로그인');
     }
+    renderAuthGate();
+  }
+  function renderAuthGate() {
+    var appMain = document.getElementById('appMain');
+    var authOverlay = document.getElementById('authOverlay');
+    if (!appMain || !authOverlay) return;
+    if (isLoggedIn) {
+      appMain.classList.remove('hidden');
+      authOverlay.style.display = 'none';
+      authOverlay.classList.remove('auth-gate');
+    } else {
+      appMain.classList.add('hidden');
+      authOverlay.style.display = 'flex';
+      authOverlay.classList.add('auth-gate');
+    }
   }
   function openAuthModal() {
     var overlay = document.getElementById('authOverlay');
-    if (overlay) overlay.style.display = 'flex';
+    if (overlay) { overlay.style.display = 'flex'; overlay.classList.remove('auth-gate'); }
     document.getElementById('authLoginPanel').style.display = 'block';
     document.getElementById('authSignupPanel').style.display = 'none';
     document.querySelectorAll('.auth-tab').forEach(function(t){ t.classList.remove('active'); if (t.getAttribute('data-auth-tab') === 'login') t.classList.add('active'); });
@@ -1908,7 +1965,8 @@
   }
   function closeAuthModal() {
     var overlay = document.getElementById('authOverlay');
-    if (overlay) overlay.style.display = 'none';
+    if (overlay && isLoggedIn) overlay.style.display = 'none';
+    if (overlay && !isLoggedIn) { overlay.style.display = 'flex'; overlay.classList.add('auth-gate'); }
   }
   function doLogin() {
     var nick = (document.getElementById('authLoginNick') || {}).value.trim();
@@ -2394,7 +2452,7 @@
     var authClose = document.getElementById('authClose');
     if (authClose) authClose.addEventListener('click', closeAuthModal);
     var authOverlay = document.getElementById('authOverlay');
-    if (authOverlay) authOverlay.addEventListener('click', function(e) { if (e.target === authOverlay) closeAuthModal(); });
+    if (authOverlay) authOverlay.addEventListener('click', function(e) { if (e.target === authOverlay && !authOverlay.classList.contains('auth-gate')) closeAuthModal(); });
     var btnAuthLogin = document.getElementById('btnAuthLogin');
     if (btnAuthLogin) btnAuthLogin.addEventListener('click', doLogin);
     var btnAuthSignup = document.getElementById('btnAuthSignup');

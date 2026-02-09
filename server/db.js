@@ -1,12 +1,9 @@
 const { Pool } = require('pg');
 
 const connectionString = process.env.DATABASE_URL;
-if (!connectionString) {
-  console.warn('DATABASE_URL이 없습니다. Supabase 연결 정보를 설정해 주세요.');
-}
 
 const pool = new Pool({
-  connectionString,
+  connectionString: connectionString || undefined,
   ssl: connectionString && connectionString.includes('supabase') ? { rejectUnauthorized: false } : undefined,
 });
 
@@ -34,7 +31,11 @@ async function initTables() {
 
 let initDone = false;
 async function ensureInit() {
-  if (!initDone && connectionString) {
+  if (!connectionString) {
+    const err = new Error('DATABASE_URL_NOT_SET');
+    throw err;
+  }
+  if (!initDone) {
     await initTables();
     initDone = true;
   }
