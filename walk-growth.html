@@ -151,12 +151,11 @@
     .auth-loading-spinner { width: 40px; height: 40px; border: 3px solid var(--accent-dim); border-top-color: var(--accent); border-radius: 50%; margin: 0 auto 1rem; animation: spin 0.8s linear infinite; }
     @keyframes spin { to { transform: rotate(360deg); } }
     .tutorial-modal { display: flex; position: fixed; inset: 0; background: rgba(0,0,0,0.8); z-index: 400; align-items: center; justify-content: center; padding: 1rem; }
-    .welcome-modal { display: none; position: fixed; inset: 0; background: rgba(0,0,0,0.7); z-index: 300; align-items: center; justify-content: center; padding: 1rem; animation: fadeIn 0.3s ease; }
+    .welcome-modal { display: none; position: fixed; inset: 0; background: rgba(0,0,0,0.7); z-index: 300; align-items: center; justify-content: center; padding: 1rem; animation: fadeIn 0.25s ease; }
     .welcome-modal.show { display: flex; }
-    .welcome-content { background: var(--card); border-radius: var(--radius-lg); padding: 2rem; max-width: 320px; width: 100%; text-align: center; border: 1px solid rgba(255,255,255,0.08); box-shadow: var(--shadow); animation: slideUp 0.4s ease; }
-    @keyframes slideUp { from { transform: translateY(20px); opacity: 0; } to { transform: translateY(0); opacity: 1; } }
-    .welcome-icon { font-size: 4rem; margin-bottom: 1rem; animation: bounce 0.6s ease; }
-    @keyframes bounce { 0%, 100% { transform: translateY(0); } 50% { transform: translateY(-10px); } }
+    .welcome-content { background: var(--card); border-radius: var(--radius-lg); padding: 2rem; max-width: 320px; width: 100%; text-align: center; border: 1px solid rgba(255,255,255,0.08); box-shadow: var(--shadow); }
+    /* 환영 모달은 중앙에서 바로 나타나도록, 추가적인 슬라이드/바운스 애니메이션 제거 */
+    .welcome-icon { font-size: 4rem; margin-bottom: 1rem; }
     .welcome-title { font-size: 1.25rem; font-weight: 600; color: var(--accent); margin-bottom: 0.5rem; }
     .welcome-message { color: var(--text-muted); margin-bottom: 1.5rem; }
     .btn-welcome-close { background: var(--accent); color: var(--bg); border: none; border-radius: var(--radius); padding: 0.75rem 2rem; font-size: 0.9rem; font-weight: 600; cursor: pointer; transition: transform 0.2s ease, box-shadow 0.2s ease; }
@@ -478,6 +477,8 @@
     .our-map-wrap svg { width: 100%; height: 100%; display: block; }
     .our-map-path { fill: none; stroke: var(--accent); stroke-width: 4; stroke-linecap: round; stroke-linejoin: round; opacity: 0.9; filter: drop-shadow(0 0 6px var(--accent-glow)); transition: d 0.2s ease; }
     [data-theme="morning"] .our-map-path { stroke: var(--accent); filter: drop-shadow(0 0 4px rgba(22,163,74,0.35)); }
+    /* 전체 코스 맵에서는 이전 경로를 더 눈에 띄게 골드 톤으로 표시 */
+    .routes-map-box .our-map-path { stroke: var(--gold); stroke-width: 4; filter: drop-shadow(0 0 6px var(--gold-dim)); }
     .our-map-char { transition: transform 0.2s ease-out; }
     .our-map-char .char-body { fill: var(--accent); stroke: var(--bg); stroke-width: 2; }
     .our-map-char .char-head { fill: var(--accent); stroke: var(--bg); stroke-width: 1.5; }
@@ -682,11 +683,13 @@
           <button type="button" class="btn-walk-start" id="btnWalkStart">산책 시작</button>
           <button type="button" class="btn-walk-stop" id="btnWalkStop" disabled>산책 종료</button>
         </div>
-        <div class="walk-live" id="walkLive">
+      <div class="walk-live" id="walkLive">
           <div class="walk-stat"><span class="walk-stat-value" id="walkDistance">0.00</span> km</div>
+          <div class="walk-stat">속도 <span class="walk-stat-value" id="walkSpeed">0.0</span> km/h</div>
           <div class="walk-stat">XP <span class="walk-stat-value" id="walkXp">0</span></div>
           <div class="walk-stat walk-total">총 이동 거리 <span class="walk-stat-value" id="walkTotalKm">0.00</span> km</div>
           <div class="walk-next" id="walkNext">코스를 완주하면 보급 키트가 보관함에 도착해요!</div>
+          <div class="walk-next" id="walkRace" style="margin-top:0.25rem;"></div>
         </div>
         <div id="walkMap" class="our-map-wrap"></div>
         <p class="walk-status" id="walkStatus">코스를 선택하고 산책 시작을 누르세요.</p>
@@ -1368,6 +1371,8 @@
   var sessionXp = 0;
   var watchId = null;
   var lastPositionTime = 0;
+  var sessionStartTimeMs = 0;
+  var lastSpeedKmh = 0; // 마지막 구간 속도 (km/h)
   var MIN_SEGMENT_KM = 0.005;
   var MAX_SPEED_KMH = 12;
   var tutorialCompleted = false;
@@ -1707,6 +1712,22 @@
     return R * c;
   }
 
+  function formatDuration(ms) {
+    if (!ms || ms <= 0) return '';
+    var totalSec = Math.round(ms / 1000);
+    var m = Math.floor(totalSec / 60);
+    var s = totalSec % 60;
+    return m + '분 ' + (s < 10 ? '0' : '') + s + '초';
+  }
+
+  function formatPace(minPerKm) {
+    if (!minPerKm || !isFinite(minPerKm) || minPerKm <= 0) return '0:00';
+    var totalSec = Math.round(minPerKm * 60);
+    var m = Math.floor(totalSec / 60);
+    var s = totalSec % 60;
+    return m + ':' + (s < 10 ? '0' : '') + s;
+  }
+
   function getDailyKitChance() {
     var n = supplyCountToday + 1;
     if (n <= 3) return 1;
@@ -1725,8 +1746,17 @@
       supplyCountToday = 0;
     }
     var chance = getDailyKitChance();
+    var finishTime = Date.now();
+    var durationMs = sessionStartTimeMs ? (finishTime - sessionStartTimeMs) : 0;
+    if (durationMs > 0) {
+      route.lastTimeMs = durationMs;
+      if (!route.bestTimeMs || durationMs < route.bestTimeMs) {
+        route.bestTimeMs = durationMs;
+      }
+    }
+
     if (Math.random() > chance) {
-      route.completedAt = Date.now();
+      route.completedAt = finishTime;
       route.path = pathCoords.slice();
       activeRouteId = null;
       activeRouteGoalKm = 0;
@@ -1737,7 +1767,7 @@
       return;
     }
     supplyCountToday += 1;
-    route.completedAt = Date.now();
+    route.completedAt = finishTime;
     route.path = pathCoords.slice();
     activeRouteId = null;
     activeRouteGoalKm = 0;
@@ -1824,6 +1854,7 @@
       if (timeDeltaH > 0) {
         var speedKmh = seg / timeDeltaH;
         if (speedKmh > MAX_SPEED_KMH) return;
+        lastSpeedKmh = speedKmh;
       }
       var bonus = getEquipmentBonus();
       var distMult = 1 + (bonus.distance / 100);
@@ -1839,6 +1870,7 @@
     } else {
       pathCoords.push({ lat: lat, lon: lon });
       lastPositionTime = nowMs;
+      sessionStartTimeMs = nowMs;
     }
     // 야생 동물 스폰 체크 (50m마다)
     checkWildAnimalSpawn(lat, lon);
@@ -1981,6 +2013,8 @@
     pathCoords = [];
     sessionDistanceKm = 0;
     sessionXp = 0;
+    sessionStartTimeMs = 0;
+    lastSpeedKmh = 0;
     var statusEl = document.getElementById('walkStatus');
     if (statusEl) statusEl.textContent = '위치 확인 중...';
     var opts = { enableHighAccuracy: true, maximumAge: 0, timeout: 20000 };
@@ -2033,14 +2067,39 @@
     var distEl = document.getElementById('walkDistance');
     var xpEl = document.getElementById('walkXp');
     var nextEl = document.getElementById('walkNext');
+    var speedEl = document.getElementById('walkSpeed');
+    var raceEl = document.getElementById('walkRace');
     if (distEl) distEl.textContent = sessionDistanceKm.toFixed(2);
     if (xpEl) xpEl.textContent = totalXp + (sessionXp > 0 ? ' (+' + sessionXp + ')' : '');
+    if (speedEl) speedEl.textContent = lastSpeedKmh.toFixed(1);
     if (nextEl) {
       if (activeRouteId && activeRouteGoalKm > 0) {
         var remain = activeRouteGoalKm - sessionDistanceKm;
         nextEl.textContent = remain <= 0 ? '코스 완주!' : '완주까지 ' + remain.toFixed(2) + ' km';
       } else {
         nextEl.textContent = '코스를 완주하면 보급 키트가 보관함에 도착해요!';
+      }
+    }
+    if (raceEl) {
+      raceEl.textContent = '';
+      if (activeRouteId && sessionStartTimeMs && sessionDistanceKm > 0) {
+        var route = userRoutes.find(function(r){ return r.id === activeRouteId; });
+        if (route && route.bestTimeMs && route.goalKm) {
+          var now = Date.now();
+          var elapsedMs = now - sessionStartTimeMs;
+          var currentPaceMinPerKm = (elapsedMs / 60000) / Math.max(sessionDistanceKm, 0.001);
+          var bestPaceMinPerKm = (route.bestTimeMs / 60000) / route.goalKm;
+          var diffMinPerKm = currentPaceMinPerKm - bestPaceMinPerKm;
+          var label = '';
+          if (Math.abs(diffMinPerKm) < 0.05) {
+            label = '이전 기록과 거의 비슷한 페이스예요.';
+          } else if (diffMinPerKm < 0) {
+            label = '이전 나보다 더 빠르게 걷는 중이에요! (-' + formatPace(Math.abs(diffMinPerKm)) + '/km)';
+          } else {
+            label = '이전 기록보다 조금 느려요. (+' + formatPace(diffMinPerKm) + '/km)';
+          }
+          raceEl.textContent = label;
+        }
       }
     }
     var totalKmEl = document.getElementById('walkTotalKm');
@@ -2090,7 +2149,7 @@
     var g = parseFloat(goal.value) || 1;
     if (n.length < 1) { showToast('코스 이름을 입력해 주세요.'); return; }
     if (g < 0.5) g = 0.5;
-    userRoutes.push({ id: 'r_' + Date.now(), name: n, goalKm: g, path: [], completedAt: null });
+    userRoutes.push({ id: 'r_' + Date.now(), name: n, goalKm: g, path: [], completedAt: null, bestTimeMs: null, lastTimeMs: null });
     saveAll();
     name.value = '';
     goal.value = '1';
@@ -3374,11 +3433,15 @@
       card.setAttribute('data-route-id', r.id);
       var status = r.completedAt ? 'done' : 'claim';
       var statusText = r.completedAt ? '완주' : r.goalKm + ' km';
+      var bestText = '';
+      if (r.bestTimeMs) {
+        bestText = ' · 베스트 ' + formatDuration(r.bestTimeMs);
+      }
       card.innerHTML =
         '<div class="route-icon">' + (r.completedAt ? '✅' : '🗺️') + '</div>' +
         '<div class="route-info">' +
           '<div class="route-name">' + r.name + '</div>' +
-          '<div class="route-steps">목표 ' + r.goalKm + ' km' + (r.path && r.path.length ? ' · 경로 기록됨' : '') + '</div>' +
+          '<div class="route-steps">목표 ' + r.goalKm + ' km' + (r.path && r.path.length ? ' · 경로 기록됨' : '') + bestText + '</div>' +
         '</div>' +
         '<span class="route-status ' + status + '">' + statusText + '</span>';
       card.onclick = function () { updateRoutesMap(r.id); };
