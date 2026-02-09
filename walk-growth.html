@@ -19,11 +19,31 @@
   <script src="https://developers.kakao.com/sdk/js/kakao.js"></script>
   <script>
     // Capacitor 감지 (모바일 앱 환경 확인)
+    // 더 강력한 감지 로직: 여러 방법으로 확인
     window.isCapacitorApp = typeof window !== 'undefined' && (
-      window.Capacitor || 
-      window.capacitor || 
-      (window.location && (window.location.protocol === 'capacitor:' || window.location.hostname === 'localhost'))
+      window.Capacitor !== undefined ||
+      window.capacitor !== undefined ||
+      (window.location && (
+        window.location.protocol === 'capacitor:' ||
+        window.location.protocol === 'http:' && window.location.hostname === 'localhost' && navigator.userAgent.includes('Android')
+      )) ||
+      (navigator.userAgent && (
+        navigator.userAgent.includes('Capacitor') ||
+        (navigator.userAgent.includes('Android') && window.location && window.location.hostname === 'localhost')
+      ))
     );
+    
+    // 디버깅용 로그
+    if (typeof window !== 'undefined') {
+      console.log('Capacitor detection:', {
+        Capacitor: window.Capacitor !== undefined,
+        capacitor: window.capacitor !== undefined,
+        protocol: window.location ? window.location.protocol : 'N/A',
+        hostname: window.location ? window.location.hostname : 'N/A',
+        userAgent: navigator.userAgent,
+        isCapacitorApp: window.isCapacitorApp
+      });
+    }
     
     // 카카오 SDK 초기화
     if (typeof window !== 'undefined' && window.APP_CONFIG && window.APP_CONFIG.kakao) {
@@ -973,31 +993,58 @@
   <script>
 (function () {
   const GOAL = 10000;
-  // API_BASE 설정: 로컬 파일이면 localhost, 그 외에는 현재 도메인 사용
+  // API_BASE 설정: 모바일 앱 감지 우선순위로 처리
   var API_BASE = '';
-  if (typeof location !== 'undefined') {
+  var isCapacitorApp = typeof window !== 'undefined' && window.isCapacitorApp;
+  
+  // 모바일 앱 감지: 여러 방법으로 확인
+  var isMobileApp = isCapacitorApp || 
+    (typeof location !== 'undefined' && location.protocol === 'capacitor:') ||
+    (typeof location !== 'undefined' && location.hostname === 'localhost' && navigator.userAgent && navigator.userAgent.includes('Android') && !navigator.userAgent.includes('Chrome/')) ||
+    (navigator.userAgent && navigator.userAgent.includes('Capacitor'));
+  
+  if (isMobileApp) {
+    // 모바일 앱에서는 항상 Vercel URL 사용
+    API_BASE = 'https://walkinggrowth-app.vercel.app';
+    console.log('모바일 앱 감지됨 - Vercel URL 사용');
+  } else if (typeof location !== 'undefined') {
     if (location.protocol === 'file:') {
       API_BASE = 'http://localhost:3000';
     } else if (location.hostname === 'localhost' || location.hostname === '127.0.0.1') {
-      // 로컬 개발 환경
-      API_BASE = 'http://localhost:3000';
-    } else {
-      // 배포 환경: Vercel URL 사용
-      // Capacitor 앱에서는 location.origin이 제대로 작동하지 않을 수 있으므로 명시적으로 설정
-      var isCapacitorApp = typeof window !== 'undefined' && window.isCapacitorApp;
-      if (isCapacitorApp || location.protocol === 'capacitor:' || (location.hostname === 'localhost' && typeof window !== 'undefined' && window.Capacitor)) {
-        // Capacitor 모바일 앱에서는 Vercel 배포 URL 사용
+      // localhost 접속 시: 추가로 모바일 앱인지 확인
+      // Android WebView는 Chrome이 아닌 경우가 많음
+      var isAndroidApp = navigator.userAgent && 
+        navigator.userAgent.includes('Android') && 
+        !navigator.userAgent.includes('Chrome/') &&
+        !navigator.userAgent.includes('Version/');
+      
+      if (isAndroidApp || isCapacitorApp) {
+        // 모바일 앱에서는 Vercel URL 사용
         API_BASE = 'https://walkinggrowth-app.vercel.app';
+        console.log('localhost 접속이지만 모바일 앱으로 감지됨 - Vercel URL 사용');
       } else {
-        // 웹 브라우저에서는 현재 도메인 사용
-        API_BASE = location.origin;
+        // 웹 브라우저에서 localhost 접속 시에만 로컬 서버 사용
+        API_BASE = 'http://localhost:3000';
       }
+    } else {
+      // 웹 브라우저에서는 현재 도메인 사용
+      API_BASE = location.origin;
     }
   } else {
-    // location이 없는 경우 (드문 경우) - 모바일 앱일 가능성이 높음
+    // location이 없는 경우 - 모바일 앱일 가능성이 높음
     API_BASE = 'https://walkinggrowth-app.vercel.app';
   }
-  console.log('API_BASE:', API_BASE, 'Location:', typeof location !== 'undefined' ? location.href : 'N/A', 'isCapacitorApp:', typeof window !== 'undefined' && window.isCapacitorApp, 'Capacitor:', typeof window !== 'undefined' && window.Capacitor ? 'Yes' : 'No');
+  
+  console.log('API_BASE 설정 완료:', {
+    API_BASE: API_BASE,
+    location: typeof location !== 'undefined' ? location.href : 'N/A',
+    protocol: typeof location !== 'undefined' ? location.protocol : 'N/A',
+    hostname: typeof location !== 'undefined' ? location.hostname : 'N/A',
+    isCapacitorApp: isCapacitorApp,
+    isMobileApp: isMobileApp,
+    Capacitor: typeof window !== 'undefined' && window.Capacitor !== undefined,
+    userAgent: navigator.userAgent
+  });
   const TOKEN_KEY = 'walk_token';
   function getAuthToken() { try { return localStorage.getItem(TOKEN_KEY); } catch (e) { return null; } }
   function setAuthToken(t) { try { if (t) localStorage.setItem(TOKEN_KEY, t); else localStorage.removeItem(TOKEN_KEY); } catch (e) {} }
