@@ -5,6 +5,7 @@
   "scripts": {
     "start": "npx serve -p 8080",
     "prepare-android": "node scripts/prepare-www.js",
+    "generate-icons": "node scripts/generate-icons.js",
     "cap:sync": "npm run prepare-android && npx cap sync",
     "cap:android": "npm run cap:sync && npx cap open android"
   },
@@ -22,7 +23,8 @@
     "dotenv": "^16.4.5",
     "express": "^4.21.0",
     "jsonwebtoken": "^9.0.2",
-    "pg": "^8.13.0"
+    "pg": "^8.13.0",
+    "sharp": "^0.33.0"
   },
   "main": "sw.js",
   "keywords": [],
