@@ -2501,12 +2501,28 @@
     var pw = (document.getElementById('authLoginPw') || {}).value;
     if (!nick || !pw) { showToast('닉네임과 비밀번호를 입력해 주세요.'); return; }
     var url = API_BASE + '/api/auth/login';
-    console.log('Login attempt:', { url: url, API_BASE: API_BASE, location: typeof location !== 'undefined' ? location.href : 'N/A' });
-    fetch(url, {
+    console.log('Login attempt:', { url: url, API_BASE: API_BASE, location: typeof location !== 'undefined' ? location.href : 'N/A', isCapacitorApp: typeof window !== 'undefined' && window.isCapacitorApp });
+    
+    // 모바일 앱에서 네트워크 요청 시 타임아웃 설정
+    var fetchOptions = {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ nickname: nick, password: pw })
-    }).then(function (r) {
+      body: JSON.stringify({ nickname: nick, password: pw }),
+      mode: 'cors',
+      credentials: 'omit'
+    };
+    
+    // 타임아웃 추가 (30초)
+    var timeoutPromise = new Promise(function(_, reject) {
+      setTimeout(function() {
+        reject(new Error('요청 시간 초과 (30초)'));
+      }, 30000);
+    });
+    
+    Promise.race([
+      fetch(url, fetchOptions),
+      timeoutPromise
+    ]).then(function (r) {
       console.log('Login response status:', r.status, 'URL:', r.url);
       if (!r.ok) {
         return r.text().then(function (text) {
@@ -2574,11 +2590,21 @@
           stack: err.stack,
           url: url, 
           API_BASE: API_BASE,
-          location: typeof location !== 'undefined' ? location.href : 'N/A'
+          location: typeof location !== 'undefined' ? location.href : 'N/A',
+          isCapacitorApp: typeof window !== 'undefined' && window.isCapacitorApp,
+          online: navigator.onLine,
+          userAgent: navigator.userAgent
         });
         var errorMsg = '서버에 연결할 수 없어요.';
         if (err.message && err.message.includes('Failed to fetch')) {
-          errorMsg = '네트워크 연결을 확인해 주세요.';
+          // 모바일 앱에서 네트워크 오류인 경우 더 자세한 정보 제공
+          if (typeof window !== 'undefined' && window.isCapacitorApp) {
+            errorMsg = '모바일 앱 네트워크 오류: ' + API_BASE + '에 연결할 수 없어요. 인터넷 연결을 확인해 주세요.';
+          } else {
+            errorMsg = '네트워크 연결을 확인해 주세요. (API: ' + API_BASE + ')';
+          }
+        } else if (err.message && err.message.includes('요청 시간 초과')) {
+          errorMsg = '서버 응답 시간이 초과되었어요. 다시 시도해 주세요.';
         } else if (err.message) {
           errorMsg = '오류: ' + err.message;
         }
@@ -2648,11 +2674,21 @@
           stack: err.stack,
           url: url, 
           API_BASE: API_BASE,
-          location: typeof location !== 'undefined' ? location.href : 'N/A'
+          location: typeof location !== 'undefined' ? location.href : 'N/A',
+          isCapacitorApp: typeof window !== 'undefined' && window.isCapacitorApp,
+          online: navigator.onLine,
+          userAgent: navigator.userAgent
         });
         var errorMsg = '서버에 연결할 수 없어요.';
         if (err.message && err.message.includes('Failed to fetch')) {
-          errorMsg = '네트워크 연결을 확인해 주세요.';
+          // 모바일 앱에서 네트워크 오류인 경우 더 자세한 정보 제공
+          if (typeof window !== 'undefined' && window.isCapacitorApp) {
+            errorMsg = '모바일 앱 네트워크 오류: ' + API_BASE + '에 연결할 수 없어요. 인터넷 연결을 확인해 주세요.';
+          } else {
+            errorMsg = '네트워크 연결을 확인해 주세요. (API: ' + API_BASE + ')';
+          }
+        } else if (err.message && err.message.includes('요청 시간 초과')) {
+          errorMsg = '서버 응답 시간이 초과되었어요. 다시 시도해 주세요.';
         } else if (err.message) {
           errorMsg = '오류: ' + err.message;
         }
