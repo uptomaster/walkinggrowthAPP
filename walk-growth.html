@@ -1230,7 +1230,9 @@
     attendanceStreak: 'walk_attendance_streak',
     tutorialCompleted: 'walk_tutorial_completed',
     wildAnimals: 'walk_wild_animals',
-    capturedAnimals: 'walk_captured_animals'
+    capturedAnimals: 'walk_captured_animals',
+    partnerPoints: 'walk_partner_points',
+    equipmentCodexOwned: 'walk_equipment_codex_owned'
   };
   var ATTENDANCE_DAILY_GOLD = [10, 15, 20, 25, 30, 40];
   var ATTENDANCE_7DAY_BOX_NAME = '위클리 마스터 선물상자';
@@ -1491,19 +1493,33 @@
   }
 
   let steps = 0, lastDate = '', lifetimeSteps = 0;
-  // 동물 데이터
+  // 동물 데이터 (스타팅 펫 + 고유 능력)
+  // NOTE: 스타팅 펫은 한 번만 선택 가능 (포켓몬 스타팅처럼)
+  // 능력은 걸음 수/거리에는 영향을 주지 않고, 보상·경험·이벤트 쪽에만 영향을 준다.
   const PET_TYPES = [
-    { id: 'dog', name: '강아지', emoji: '🐕', description: '충실하고 활발한 친구', color: '#fbbf24' },
-    { id: 'cat', name: '고양이', emoji: '🐱', description: '우아하고 독립적인 친구', color: '#f97316' },
-    { id: 'lion', name: '사자', emoji: '🦁', description: '용맹하고 당당한 친구', color: '#eab308' },
-    { id: 'rabbit', name: '토끼', emoji: '🐰', description: '귀엽고 민첩한 친구', color: '#fda4af' },
-    { id: 'bear', name: '곰', emoji: '🐻', description: '힘차고 든든한 친구', color: '#92400e' },
-    { id: 'panda', name: '판다', emoji: '🐼', description: '평화롭고 사랑스러운 친구', color: '#ffffff' },
-    { id: 'fox', name: '여우', emoji: '🦊', description: '영리하고 교활한 친구', color: '#f97316' },
-    { id: 'tiger', name: '호랑이', emoji: '🐯', description: '강인하고 용맹한 친구', color: '#fbbf24' }
+    // 강아지: 경험치 파트너 - 걷기 관련 XP 보너스
+    { id: 'dog', name: '강아지', emoji: '🐕', description: '충실한 경험치 파트너 (걷기 XP 보너스)', color: '#fbbf24', ability: 'xp_bonus' },
+    // 고양이: 골드 헌터 - 골드 관련 보상 보너스
+    { id: 'cat', name: '고양이', emoji: '🐱', description: '영리한 골드 헌터 (골드 보상 보너스)', color: '#f97316', ability: 'gold_bonus' },
+    // 사자: 도전가 - 루트 경쟁/도전 관련 추가 리워드
+    { id: 'lion', name: '사자', emoji: '🦁', description: '용맹한 도전가 (루트 도전 성공 시 추가 보상)', color: '#eab308', ability: 'route_challenge_bonus' },
+    // 토끼: 퀘스트 러너 - 데일리 퀘스트 진행/완료 보너스
+    { id: 'rabbit', name: '토끼', emoji: '🐰', description: '민첩한 퀘스트 러너 (퀘스트 보상 보너스)', color: '#fda4af', ability: 'quest_bonus' },
+    // 곰: 수호자 - 출석/연속 출석 쪽 보너스
+    { id: 'bear', name: '곰', emoji: '🐻', description: '든든한 수호자 (출석 보너스)', color: '#92400e', ability: 'attendance_bonus' },
+    // 판다: 평온한 동료 - 튜토리얼·초보자 보호, 걷기 포인트 추가 획득
+    { id: 'panda', name: '판다', emoji: '🐼', description: '평화로운 동료 (산책 포인트 추가 획득)', color: '#ffffff', ability: 'extra_partner_points' },
+    // 여우: 수집가 - 도감/아이템 관련 추가 포인트
+    { id: 'fox', name: '여우', emoji: '🦊', description: '영리한 수집가 (도감/아이템 수집 보너스)', color: '#f97316', ability: 'codex_bonus' },
+    // 호랑이: 사냥꾼 - 야생 동물/유니크 동물 관련 보너스
+    { id: 'tiger', name: '호랑이', emoji: '🐯', description: '강인한 사냥꾼 (야생 동물 보상 보너스)', color: '#fbbf24', ability: 'wild_bonus' }
   ];
   
   let pet = { type: null, level: 1, exp: 0, name: '' }; // 선택한 동물 정보
+  // 파트너 포인트: 동물과 함께 걷고 플레이하며 쌓이는 특별 포인트 (리워드 교환용)
+  var partnerPoints = 0;
+  // 장비 도감에 영구 등록된 장비 (파괴 후에도 남도록)
+  var equipmentCodexOwned = {};
   
   let avatar = { name: '산책러', skin: '#f5d0b0', hair: 'short', hairColor: '#4a3728' };
   let inventory = [];
@@ -1680,6 +1696,14 @@
       var p = localStorage.getItem(STORAGE_KEYS.pet);
       if (p) pet = { ...pet, ...JSON.parse(p) };
     } catch (e) {}
+    try {
+      var eo = localStorage.getItem(STORAGE_KEYS.equipmentCodexOwned);
+      if (eo) equipmentCodexOwned = JSON.parse(eo) || {};
+    } catch (e) {}
+    try {
+      var pp = localStorage.getItem(STORAGE_KEYS.partnerPoints);
+      if (pp != null) partnerPoints = parseInt(pp, 10) || 0;
+    } catch (e) {}
     var th = localStorage.getItem(STORAGE_KEYS.theme);
     if (th === 'morning' || th === 'night') document.body.setAttribute('data-theme', th);
     lastDate = todayStr();
@@ -1716,6 +1740,8 @@
       localStorage.setItem(STORAGE_KEYS.attendanceDate, lastAttendanceDate);
       localStorage.setItem(STORAGE_KEYS.attendanceStreak, String(attendanceStreak));
       localStorage.setItem(STORAGE_KEYS.pet, JSON.stringify(pet));
+      localStorage.setItem(STORAGE_KEYS.partnerPoints, String(partnerPoints));
+      localStorage.setItem(STORAGE_KEYS.equipmentCodexOwned, JSON.stringify(equipmentCodexOwned));
     } catch (e) {}
     if (isLoggedIn && getAuthToken()) syncGameStateToServer();
   }
@@ -1838,7 +1864,11 @@
       if (claimedRoutes.indexOf(r.id) !== -1) return;
       if (lifetimeSteps < r.steps) return;
       claimedRoutes.push(r.id);
-      inventory.push({ id: r.reward.id + '_' + Date.now(), name: r.reward.name, type: r.reward.type, emoji: r.reward.emoji, rarity: 'common', enhance: 0, tier: r.reward.tier || 'standard' });
+      var newItem = { id: r.reward.id + '_' + Date.now(), name: r.reward.name, type: r.reward.type, emoji: r.reward.emoji, rarity: 'common', enhance: 0, tier: r.reward.tier || 'standard' };
+      inventory.push(newItem);
+      // 장비 도감 영구 등록 + 파트너 포인트 (장비 수집 보너스)
+      markEquipmentOwnedByItem(newItem);
+      addPartnerPointsForSource(1, 'codex');
       saveAll();
       showToast('🎁 ' + r.name + '에서 ' + r.reward.name + ' 획득!');
       renderRoutes();
@@ -1912,6 +1942,8 @@
       route.path = pathCoords.slice();
       activeRouteId = null;
       activeRouteGoalKm = 0;
+      // 코스 완주 기본 파트너 포인트
+      addPartnerPointsForSource(2, 'route_complete');
       saveAll();
       renderWalk();
       renderRouteSelect();
@@ -1924,6 +1956,8 @@
     activeRouteId = null;
     activeRouteGoalKm = 0;
     storage.push({ id: 'kit_' + Date.now(), type: 'supply_kit', name: '트레이닝 보급 키트', receivedAt: Date.now() });
+    // 코스 완주 + 키트 획득 보너스
+    addPartnerPointsForSource(3, 'route_complete');
     saveAll();
     showToast('📦 보급 키트가 보관함에 도착했어요');
     renderWalk();
@@ -1951,6 +1985,9 @@
     var rarity = rollRarity();
     var newItem = { id: item.id + '_' + Date.now(), name: item.name, type: item.type, emoji: item.emoji, rarity: rarity, enhance: 0, tier: item.tier || 'standard' };
     inventory.push(newItem);
+    // 장비 도감 영구 등록 + 파트너 포인트 (장비 수집 보너스)
+    markEquipmentOwnedByItem(newItem);
+    addPartnerPointsForSource(1, 'codex');
     saveAll();
     var rarityLabel = { common: '커먼', rare: '레어', epic: '에픽', legend: '레전드' }[rarity];
     var tierLabel = TIER_LABELS[item.tier] || '스탠다드';
@@ -2141,7 +2178,10 @@
     var goldReward = { common: 10, rare: 30, epic: 100, legend: 500 }[animal.rarity];
     gold += goldReward;
     showToast('💰 +' + goldReward + 'G 획득!');
-    
+    // 야생 동물 관련 파트너 포인트
+    var basePP = { common: 1, rare: 2, epic: 4, legend: 8 }[animal.rarity] || 1;
+    addPartnerPointsForSource(basePP, 'wild');
+
     saveAll();
     renderAnimalCollection();
   }
@@ -2444,6 +2484,9 @@
     var newItem = { id: item.id + '_' + Date.now(), name: item.name, type: item.type, emoji: item.emoji, rarity: rarity, enhance: 0, tier: item.tier || 'standard' };
     inventory.push(newItem);
     questGachaCount += 1;
+    // 장비 도감 영구 등록 + 파트너 포인트 (장비/뽑기 보너스)
+    markEquipmentOwnedByItem(newItem);
+    addPartnerPointsForSource(premium ? 2 : 1, 'codex');
     saveAll();
     renderGold();
     renderInventory();
@@ -2561,6 +2604,8 @@
     if (q.getProgress() < q.goal) { showToast('아직 목표를 달성하지 못했어요'); return; }
     questClaimed[questId] = true;
     gold += q.reward;
+    // 토끼(퀘스트 보너스) 및 파트너 포인트
+    addPartnerPointsForSource(2, 'quest');
     saveAll();
     renderQuests();
     renderGold();
@@ -2583,6 +2628,8 @@
     if (sharedToday) { showToast('오늘은 이미 공유 보상을 받았어요'); return; }
     sharedToday = true;
     gold += 40;
+    // 공유 성공도 퀘스트/수집 보너스와 연결
+    addPartnerPointsForSource(1, 'quest');
     saveAll();
     renderGold();
     renderQuests();
@@ -3403,6 +3450,8 @@
     if (attendanceStreak <= 6) {
       var reward = ATTENDANCE_DAILY_GOLD[attendanceStreak - 1] || 10;
       gold += reward;
+      // 곰(출석 보너스) 및 파트너 포인트
+      addPartnerPointsForSource(1, 'attendance');
       saveAll();
       renderGold();
       renderAttendance();
@@ -3416,6 +3465,8 @@
   function openWeekMasterBox() {
     if (Math.random() < 0.5) {
       gold += ATTENDANCE_7DAY_GOLD;
+      // 7일 상자 출석 보너스
+      addPartnerPointsForSource(3, 'attendance');
       saveAll();
       renderGold();
       renderAttendance();
@@ -3425,6 +3476,9 @@
       var rarity = rollRarityPremium();
       var newItem = { id: item.id + '_' + Date.now(), name: item.name, type: item.type, emoji: item.emoji, rarity: rarity, enhance: 0, tier: item.tier || 'standard' };
       inventory.push(newItem);
+      // 장비 도감 영구 등록 + 파트너 포인트
+      markEquipmentOwnedByItem(newItem);
+      addPartnerPointsForSource(2, 'codex');
       saveAll();
       renderInventory();
       renderAttendance();
@@ -3464,7 +3518,22 @@
     if (petName) petName.textContent = pet.name || petType.name;
     if (petLevel) petLevel.textContent = 'Lv.' + pet.level;
     if (petExpFill) petExpFill.style.width = Math.min(expPercent, 100) + '%';
-    if (petExpText) petExpText.textContent = '경험치: ' + pet.exp + ' / ' + expForNextLevel;
+    if (petExpText) {
+      var abilityLabel = '';
+      switch (petType.ability) {
+        case 'xp_bonus': abilityLabel = '걷기 XP 보너스'; break;
+        case 'gold_bonus': abilityLabel = '골드 보상 보너스'; break;
+        case 'route_challenge_bonus': abilityLabel = '코스 도전 추가 보상'; break;
+        case 'quest_bonus': abilityLabel = '퀘스트 보상 보너스'; break;
+        case 'attendance_bonus': abilityLabel = '출석 보상 보너스'; break;
+        case 'extra_partner_points': abilityLabel = '파트너 포인트 추가 획득'; break;
+        case 'codex_bonus': abilityLabel = '도감/장비 수집 보너스'; break;
+        case 'wild_bonus': abilityLabel = '야생 동물 보상 보너스'; break;
+        default: abilityLabel = '';
+      }
+      var abilityText = abilityLabel ? ' · 특성: ' + abilityLabel : '';
+      petExpText.textContent = '경험치: ' + pet.exp + ' / ' + expForNextLevel + abilityText;
+    }
   }
   
   function addPetExp(amount) {
@@ -3479,6 +3548,51 @@
     }
     saveAll();
     renderPet();
+  }
+
+  function getActivePetType() {
+    if (!pet || !pet.type) return null;
+    return PET_TYPES.find(function(p) { return p.id === pet.type; }) || null;
+  }
+
+  // 파트너 포인트 및 펫 특성 보정
+  function addPartnerPointsForSource(baseAmount, source) {
+    if (!baseAmount || baseAmount <= 0) return;
+    var petType = getActivePetType();
+    var extra = 0;
+    if (petType && petType.ability) {
+      switch (petType.ability) {
+        case 'xp_bonus':
+          if (source === 'walk_xp') extra += Math.ceil(baseAmount * 0.5);
+          break;
+        case 'gold_bonus':
+          if (source === 'gold_reward' || source === 'quest') extra += Math.ceil(baseAmount * 0.5);
+          break;
+        case 'route_challenge_bonus':
+          if (source === 'route_complete') extra += baseAmount; // 도전 보너스
+          break;
+        case 'quest_bonus':
+          if (source === 'quest') extra += baseAmount; // 퀘스트 보너스
+          break;
+        case 'attendance_bonus':
+          if (source === 'attendance') extra += baseAmount; // 출석 보너스
+          break;
+        case 'extra_partner_points':
+          extra += Math.ceil(baseAmount * 0.5); // 어디서든 추가 포인트
+          break;
+        case 'codex_bonus':
+          if (source === 'codex') extra += Math.ceil(baseAmount * 0.5); // 도감/장비 관련
+          break;
+        case 'wild_bonus':
+          if (source === 'wild') extra += baseAmount; // 야생 동물 보너스
+          break;
+      }
+    }
+    var gain = baseAmount + extra;
+    partnerPoints += gain;
+    saveAll();
+    // 토스트는 너무 자주 뜨지 않도록 간단하게만 표기
+    showToast('✨ 파트너 포인트 +' + gain + (petType ? ' (' + petType.name + ')' : ''));
   }
   
   function renderAvatar() {
@@ -3790,9 +3904,35 @@
     animalPanel.style.display = isEquip ? 'none' : 'block';
   }
 
+  function markEquipmentOwnedByItem(item) {
+    if (!item || !item.name || !item.type) return;
+    var key = item.type + '|' + item.name;
+    equipmentCodexOwned[key] = true;
+  }
+  function rebuildEquipmentCodexOwnedFromInventory() {
+    // 인벤/보관함/착용 장비를 기준으로 한 번 싹 스캔해서 영구 도감에 반영
+    equipmentCodexOwned = equipmentCodexOwned || {};
+    function addFromItem(item) {
+      if (!item || !item.name || !item.type) return;
+      var key = item.type + '|' + item.name;
+      equipmentCodexOwned[key] = true;
+    }
+    inventory.forEach(addFromItem);
+    storage.forEach(addFromItem);
+    Object.keys(equipped).forEach(function(slot) {
+      var id = equipped[slot];
+      if (!id) return;
+      var item = inventory.find(function(i){ return i.id === id; });
+      if (item) addFromItem(item);
+    });
+  }
   function getOwnedBaseItemIds() {
-    // 이름+타입 기준으로 획득 여부를 판별 (예전 아이템 ID 포맷도 대응)
+    // 영구 도감 기준 + 현재 인벤토리 기준을 모두 합쳐서 사용
     var ownedKeyMap = {};
+    equipmentCodexOwned = equipmentCodexOwned || {};
+    Object.keys(equipmentCodexOwned).forEach(function(key) {
+      if (equipmentCodexOwned[key]) ownedKeyMap[key] = true;
+    });
     function addFromItem(item) {
       if (!item || !item.name || !item.type) return;
       var key = item.type + '|' + item.name;
@@ -3931,6 +4071,12 @@
   }
   
   function openPetSelectModal() {
+    // 이미 스타팅 파트너를 선택했다면 다시 바꿀 수 없음
+    if (pet && pet.type) {
+      var currentPet = PET_TYPES.find(function(p) { return p.id === pet.type; });
+      showToast((currentPet ? currentPet.name + '와(과) ' : '') + '이미 함께 걷고 있어요. 파트너는 한 번만 선택할 수 있어요.');
+      return;
+    }
     var overlay = document.getElementById('petSelectOverlay');
     var grid = document.getElementById('petGrid');
     if (!overlay || !grid) return;
@@ -3960,6 +4106,13 @@
   }
   
   function confirmPetSelection() {
+    // 이미 파트너가 있으면 변경 불가
+    if (pet && pet.type) {
+      var currentPet = PET_TYPES.find(function(p) { return p.id === pet.type; });
+      showToast((currentPet ? currentPet.name + '는(은) ' : '파트너는 ') + '한 번 선택하면 변경할 수 없어요.');
+      closePetSelectModal();
+      return;
+    }
     var selectedItem = document.querySelector('.pet-item.selected');
     if (!selectedItem) {
       showToast('동물을 선택해주세요.');
