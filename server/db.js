@@ -47,6 +47,19 @@ async function initTables() {
       ALTER TABLE users ADD COLUMN IF NOT EXISTS social_id TEXT;
     `);
     
+    // password_hash 컬럼이 NOT NULL 제약이 있으면 제거 (소셜 로그인 사용자는 비밀번호가 없음)
+    try {
+      // 기존 테이블의 password_hash 제약 조건 확인 및 수정
+      await client.query(`
+        ALTER TABLE users ALTER COLUMN password_hash DROP NOT NULL;
+      `);
+    } catch (alterErr) {
+      // 제약 조건이 없거나 이미 NULL 허용이면 무시
+      if (alterErr.code !== '42704' && alterErr.code !== '42804') {
+        console.warn('Failed to alter password_hash column:', alterErr.message);
+      }
+    }
+    
     // email과 social_id에 인덱스 추가 (컬럼 추가 후에 실행)
     await client.query(`
       CREATE INDEX IF NOT EXISTS idx_users_nickname ON users(nickname);
