@@ -1,4 +1,4 @@
-﻿(function () {
+(function () {
   const GOAL = 10000;
   // API_BASE 설정: 모바일 앱 감지 우선순위로 처리
   var API_BASE = '';
@@ -903,8 +903,16 @@
       var distMult = 1 + (bonus.distance / 100);
       var xpMult = 1 + (bonus.xp / 100);
       sessionDistanceKm += seg * distMult;
-      sessionXp = Math.floor(sessionDistanceKm * XP_PER_KM);
-      totalXp += Math.floor(seg * XP_PER_KM * xpMult);
+      // 파티 보너스 계산
+      var partyBonus = 1.0;
+      if (currentParty && currentParty.members) {
+        var memberCount = currentParty.members.length;
+        if (memberCount >= 4) partyBonus = 1.3; // 4명: +30%
+        else if (memberCount >= 3) partyBonus = 1.2; // 3명: +20%
+        else if (memberCount >= 2) partyBonus = 1.1; // 2명: +10%
+      }
+      sessionXp = Math.floor(sessionDistanceKm * XP_PER_KM * partyBonus);
+      totalXp += Math.floor(seg * XP_PER_KM * xpMult * partyBonus);
       totalWalkDistanceKm += seg * distMult;
       checkRouteComplete();
       saveAll();
@@ -1327,6 +1335,7 @@
     if (tabId === 'storage') renderStorage();
     if (tabId === 'shop') { renderGold(); }
     if (tabId === 'equipment') { renderEquipped(); renderInventory(); renderEnhanceSelect(); }
+    if (tabId === 'social') { renderFriends(); renderChatList(); renderParty(); }
     if (tabId === 'story') { renderStory(); renderAchievements(); renderAnimalCollection(); }
   }
   function doGachaPull(premium) {
@@ -3146,6 +3155,46 @@
     });
     var btnAttendance = document.getElementById('btnAttendance');
     if (btnAttendance) btnAttendance.addEventListener('click', doAttendance);
+    // 친구/채팅/파티 이벤트 리스너
+    var btnFriendSearch = document.getElementById('btnFriendSearch');
+    if (btnFriendSearch) btnFriendSearch.addEventListener('click', searchFriends);
+    var friendSearchInput = document.getElementById('friendSearchInput');
+    if (friendSearchInput) {
+      friendSearchInput.addEventListener('keypress', function(e) {
+        if (e.key === 'Enter') searchFriends();
+      });
+    }
+    document.querySelectorAll('.social-tab-btn').forEach(function(btn) {
+      btn.addEventListener('click', function() {
+        switchSocialTab(btn.getAttribute('data-social-tab'));
+      });
+    });
+    var btnSendMessage = document.getElementById('btnSendMessage');
+    if (btnSendMessage) btnSendMessage.addEventListener('click', sendChatMessage);
+    var chatMessageInput = document.getElementById('chatMessageInput');
+    if (chatMessageInput) {
+      chatMessageInput.addEventListener('keypress', function(e) {
+        if (e.key === 'Enter') sendChatMessage();
+      });
+    }
+    var btnCloseChat = document.getElementById('btnCloseChat');
+    if (btnCloseChat) btnCloseChat.addEventListener('click', function() {
+      var chatRoom = document.getElementById('chatRoom');
+      if (chatRoom) chatRoom.style.display = 'none';
+      currentChatFriendId = null;
+      if (chatPollInterval) {
+        clearInterval(chatPollInterval);
+        chatPollInterval = null;
+      }
+    });
+    var btnCreateParty = document.getElementById('btnCreateParty');
+    if (btnCreateParty) btnCreateParty.addEventListener('click', createParty);
+    var btnLeaveParty = document.getElementById('btnLeaveParty');
+    if (btnLeaveParty) btnLeaveParty.addEventListener('click', function() {
+      if (confirm('파티에서 나가시겠어요?')) {
+        leaveParty();
+      }
+    });
   }
 
   var lastAcc = 0, lastPeakTime = 0;
@@ -3234,6 +3283,517 @@
     });
     if (codexTabEquip) codexTabEquip.addEventListener('click', function() { switchCodexTab('equip'); renderEquipmentCodex(); });
     if (codexTabAnimal) codexTabAnimal.addEventListener('click', function() { switchCodexTab('animal'); renderCodexAnimals(); });
+  }
+
+  // 친구/채팅/파티 관련 변수
+  var currentChatFriendId = null;
+  var chatPollInterval = null;
+  var currentParty = null;
+
+  // 친구 검색
+  function searchFriends() {
+    var input = document.getElementById('friendSearchInput');
+    var query = input ? input.value.trim() : '';
+    if (!query) {
+      showToast('닉네임을 입력해 주세요.');
+      return;
+    }
+    var token = getAuthToken();
+    if (!token) {
+      showToast('로그인이 필요해요.');
+      return;
+    }
+    fetch(API_BASE + '/api/friends/search?nickname=' + encodeURIComponent(query), {
+      headers: { 'Authorization': 'Bearer ' + token }
+    })
+    .then(function(res) { return res.json(); })
+    .then(function(data) {
+      if (data.error) {
+        showToast(data.error);
+        return;
+      }
+      renderFriendSearchResults(data.users || []);
+    })
+    .catch(function(err) {
+      console.error('Friend search error:', err);
+      showToast('검색 중 오류가 발생했어요.');
+    });
+  }
+
+  // 친구 검색 결과 렌더링
+  function renderFriendSearchResults(users) {
+    var container = document.getElementById('friendSearchResults');
+    if (!container) return;
+    if (users.length === 0) {
+      container.innerHTML = '<div class="empty-state">검색 결과가 없어요.</div>';
+      return;
+    }
+    container.innerHTML = users.map(function(user) {
+      return '<div class="friend-item">' +
+        '<div class="friend-info">' +
+        '<div class="friend-name">' + escapeHtml(user.nickname) + '</div>' +
+        '<div class="friend-status">가입일: ' + new Date(user.created_at).toLocaleDateString() + '</div>' +
+        '</div>' +
+        '<div class="friend-actions">' +
+        '<button type="button" class="btn-friend-action btn-friend-accept" data-friend-id="' + user.id + '">요청</button>' +
+        '</div>' +
+        '</div>';
+    }).join('');
+    // 요청 버튼 이벤트
+    container.querySelectorAll('.btn-friend-action[data-friend-id]').forEach(function(btn) {
+      btn.addEventListener('click', function() {
+        sendFriendRequest(parseInt(btn.getAttribute('data-friend-id')));
+      });
+    });
+  }
+
+  // 친구 요청 보내기
+  function sendFriendRequest(friendId) {
+    var token = getAuthToken();
+    if (!token) {
+      showToast('로그인이 필요해요.');
+      return;
+    }
+    fetch(API_BASE + '/api/friends/request', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'Authorization': 'Bearer ' + token
+      },
+      body: JSON.stringify({ friendId: friendId })
+    })
+    .then(function(res) { return res.json(); })
+    .then(function(data) {
+      if (data.error) {
+        showToast(data.error);
+        return;
+      }
+      showToast(data.message || '친구 요청을 보냈어요.');
+      renderFriends();
+    })
+    .catch(function(err) {
+      console.error('Friend request error:', err);
+      showToast('친구 요청 중 오류가 발생했어요.');
+    });
+  }
+
+  // 친구 목록 렌더링
+  function renderFriends() {
+    var token = getAuthToken();
+    if (!token) {
+      var container = document.getElementById('friendsList');
+      if (container) container.innerHTML = '<div class="empty-state">로그인이 필요해요.</div>';
+      return;
+    }
+    fetch(API_BASE + '/api/friends/list', {
+      headers: { 'Authorization': 'Bearer ' + token }
+    })
+    .then(function(res) { return res.json(); })
+    .then(function(data) {
+      if (data.error) {
+        showToast(data.error);
+        return;
+      }
+      renderFriendRequests(data.receivedRequests || []);
+      renderFriendsList(data.friends || []);
+    })
+    .catch(function(err) {
+      console.error('Friend list error:', err);
+      showToast('친구 목록 조회 중 오류가 발생했어요.');
+    });
+  }
+
+  // 친구 요청 목록 렌더링
+  function renderFriendRequests(requests) {
+    var container = document.getElementById('friendRequestsList');
+    if (!container) return;
+    if (requests.length === 0) {
+      container.innerHTML = '<div class="empty-state">받은 친구 요청이 없어요.</div>';
+      return;
+    }
+    container.innerHTML = requests.map(function(req) {
+      return '<div class="friend-item">' +
+        '<div class="friend-info">' +
+        '<div class="friend-name">' + escapeHtml(req.nickname) + '</div>' +
+        '<div class="friend-status">친구 요청</div>' +
+        '</div>' +
+        '<div class="friend-actions">' +
+        '<button type="button" class="btn-friend-action btn-friend-accept" data-request-id="' + req.id + '">수락</button>' +
+        '<button type="button" class="btn-friend-action btn-friend-reject" data-request-id="' + req.id + '">거절</button>' +
+        '</div>' +
+        '</div>';
+    }).join('');
+    // 수락/거절 버튼 이벤트
+    container.querySelectorAll('.btn-friend-action[data-request-id]').forEach(function(btn) {
+      btn.addEventListener('click', function() {
+        var action = btn.classList.contains('btn-friend-accept') ? 'accept' : 'reject';
+        respondFriendRequest(parseInt(btn.getAttribute('data-request-id')), action);
+      });
+    });
+  }
+
+  // 친구 목록 렌더링
+  function renderFriendsList(friends) {
+    var container = document.getElementById('friendsList');
+    if (!container) return;
+    if (friends.length === 0) {
+      container.innerHTML = '<div class="empty-state">친구가 없어요. 친구를 검색해서 추가해보세요!</div>';
+      return;
+    }
+    container.innerHTML = friends.map(function(friend) {
+      return '<div class="friend-item">' +
+        '<div class="friend-info">' +
+        '<div class="friend-name">' + escapeHtml(friend.nickname) + '</div>' +
+        '<div class="friend-status">친구</div>' +
+        '</div>' +
+        '<div class="friend-actions">' +
+        '<button type="button" class="btn-friend-action btn-friend-chat" data-friend-id="' + friend.friend_id + '" data-friend-name="' + escapeHtml(friend.nickname) + '">채팅</button>' +
+        '</div>' +
+        '</div>';
+    }).join('');
+    // 채팅 버튼 이벤트
+    container.querySelectorAll('.btn-friend-chat[data-friend-id]').forEach(function(btn) {
+      btn.addEventListener('click', function() {
+        var friendId = parseInt(btn.getAttribute('data-friend-id'));
+        var friendName = btn.getAttribute('data-friend-name');
+        openChat(friendId, friendName);
+        // 채팅 탭으로 전환
+        switchSocialTab('chat');
+      });
+    });
+  }
+
+  // 친구 요청 응답
+  function respondFriendRequest(requestId, action) {
+    var token = getAuthToken();
+    if (!token) {
+      showToast('로그인이 필요해요.');
+      return;
+    }
+    fetch(API_BASE + '/api/friends/respond', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'Authorization': 'Bearer ' + token
+      },
+      body: JSON.stringify({ requestId: requestId, action: action })
+    })
+    .then(function(res) { return res.json(); })
+    .then(function(data) {
+      if (data.error) {
+        showToast(data.error);
+        return;
+      }
+      showToast(data.message || (action === 'accept' ? '친구 요청을 수락했어요.' : '친구 요청을 거절했어요.'));
+      renderFriends();
+    })
+    .catch(function(err) {
+      console.error('Friend respond error:', err);
+      showToast('친구 요청 처리 중 오류가 발생했어요.');
+    });
+  }
+
+  // 채팅 목록 렌더링
+  function renderChatList() {
+    var token = getAuthToken();
+    if (!token) {
+      var container = document.getElementById('chatList');
+      if (container) container.innerHTML = '<div class="empty-state">로그인이 필요해요.</div>';
+      return;
+    }
+    fetch(API_BASE + '/api/chat/list', {
+      headers: { 'Authorization': 'Bearer ' + token }
+    })
+    .then(function(res) { return res.json(); })
+    .then(function(data) {
+      if (data.error) {
+        showToast(data.error);
+        return;
+      }
+      var container = document.getElementById('chatList');
+      if (!container) return;
+      if (data.chats.length === 0) {
+        container.innerHTML = '<div class="empty-state">채팅 내역이 없어요.</div>';
+        return;
+      }
+      container.innerHTML = data.chats.map(function(chat) {
+        return '<div class="chat-item" data-friend-id="' + chat.friend_id + '" data-friend-name="' + escapeHtml(chat.friend_nickname) + '">' +
+          '<div class="chat-info">' +
+          '<div class="chat-name">' + escapeHtml(chat.friend_nickname) + (chat.is_unread ? ' <span style="color:var(--accent);">●</span>' : '') + '</div>' +
+          '<div class="chat-last-message">' + escapeHtml(chat.message.substring(0, 30)) + (chat.message.length > 30 ? '...' : '') + '</div>' +
+          '</div>' +
+          '</div>';
+      }).join('');
+      // 채팅 항목 클릭 이벤트
+      container.querySelectorAll('.chat-item[data-friend-id]').forEach(function(item) {
+        item.addEventListener('click', function() {
+          var friendId = parseInt(item.getAttribute('data-friend-id'));
+          var friendName = item.getAttribute('data-friend-name');
+          openChat(friendId, friendName);
+        });
+      });
+    })
+    .catch(function(err) {
+      console.error('Chat list error:', err);
+      showToast('채팅 목록 조회 중 오류가 발생했어요.');
+    });
+  }
+
+  // 채팅방 열기
+  function openChat(friendId, friendName) {
+    currentChatFriendId = friendId;
+    var chatRoom = document.getElementById('chatRoom');
+    var chatRoomTitle = document.getElementById('chatRoomTitle');
+    if (chatRoomTitle) chatRoomTitle.textContent = friendName + '님과의 채팅';
+    if (chatRoom) chatRoom.style.display = 'block';
+    loadChatMessages(friendId);
+    // 채팅 폴링 시작
+    if (chatPollInterval) clearInterval(chatPollInterval);
+    chatPollInterval = setInterval(function() {
+      if (currentChatFriendId === friendId) {
+        loadChatMessages(friendId);
+      }
+    }, 3000);
+  }
+
+  // 채팅 메시지 로드
+  function loadChatMessages(friendId) {
+    var token = getAuthToken();
+    if (!token) return;
+    fetch(API_BASE + '/api/chat/messages?friendId=' + friendId, {
+      headers: { 'Authorization': 'Bearer ' + token }
+    })
+    .then(function(res) { return res.json(); })
+    .then(function(data) {
+      if (data.error) {
+        console.error('Chat messages error:', data.error);
+        return;
+      }
+      renderChatMessages(data.messages || []);
+    })
+    .catch(function(err) {
+      console.error('Chat messages error:', err);
+    });
+  }
+
+  // 채팅 메시지 렌더링
+  function renderChatMessages(messages) {
+    var container = document.getElementById('chatMessages');
+    if (!container) return;
+    var token = getAuthToken();
+    if (!token) return;
+    var me = null;
+    try {
+      var payload = JSON.parse(atob(token.split('.')[1]));
+      me = payload.userId;
+    } catch (e) {}
+    container.innerHTML = messages.map(function(msg) {
+      var isSent = msg.sender_id === me;
+      var time = new Date(msg.created_at).toLocaleTimeString('ko-KR', { hour: '2-digit', minute: '2-digit' });
+      return '<div class="chat-message ' + (isSent ? 'sent' : 'received') + '">' +
+        '<div>' + escapeHtml(msg.message) + '</div>' +
+        '<div class="chat-message-time">' + time + '</div>' +
+        '</div>';
+    }).join('');
+    container.scrollTop = container.scrollHeight;
+  }
+
+  // 메시지 전송
+  function sendChatMessage() {
+    if (!currentChatFriendId) {
+      showToast('채팅방을 선택해 주세요.');
+      return;
+    }
+    var input = document.getElementById('chatMessageInput');
+    var message = input ? input.value.trim() : '';
+    if (!message) {
+      showToast('메시지를 입력해 주세요.');
+      return;
+    }
+    var token = getAuthToken();
+    if (!token) {
+      showToast('로그인이 필요해요.');
+      return;
+    }
+    fetch(API_BASE + '/api/chat/send', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'Authorization': 'Bearer ' + token
+      },
+      body: JSON.stringify({ receiverId: currentChatFriendId, message: message })
+    })
+    .then(function(res) { return res.json(); })
+    .then(function(data) {
+      if (data.error) {
+        showToast(data.error);
+        return;
+      }
+      if (input) input.value = '';
+      loadChatMessages(currentChatFriendId);
+      renderChatList();
+    })
+    .catch(function(err) {
+      console.error('Chat send error:', err);
+      showToast('메시지 전송 중 오류가 발생했어요.');
+    });
+  }
+
+  // 파티 정보 렌더링
+  function renderParty() {
+    var token = getAuthToken();
+    if (!token) {
+      var container = document.getElementById('partyInfo');
+      if (container) container.innerHTML = '<div class="empty-state">로그인이 필요해요.</div>';
+      return;
+    }
+    fetch(API_BASE + '/api/party/me', {
+      headers: { 'Authorization': 'Bearer ' + token }
+    })
+    .then(function(res) { return res.json(); })
+    .then(function(data) {
+      if (data.error) {
+        showToast(data.error);
+        return;
+      }
+      currentParty = data.party;
+      renderPartyInfo(data.party);
+      renderPartyMembers(data.party ? data.party.members : []);
+    })
+    .catch(function(err) {
+      console.error('Party me error:', err);
+      showToast('파티 정보 조회 중 오류가 발생했어요.');
+    });
+  }
+
+  // 파티 정보 렌더링
+  function renderPartyInfo(party) {
+    var container = document.getElementById('partyInfo');
+    var btnCreate = document.getElementById('btnCreateParty');
+    var btnLeave = document.getElementById('btnLeaveParty');
+    if (!container) return;
+    if (!party) {
+      container.innerHTML = '<div class="empty-state">파티에 속해있지 않아요.</div>';
+      if (btnCreate) btnCreate.style.display = 'block';
+      if (btnLeave) btnLeave.style.display = 'none';
+      return;
+    }
+    var token = getAuthToken();
+    var me = null;
+    try {
+      var payload = JSON.parse(atob(token.split('.')[1]));
+      me = payload.userId;
+    } catch (e) {}
+    var isLeader = party.leaderId === me;
+    container.innerHTML = '<div style="font-size:0.9rem;color:var(--text);">' +
+      '파티 ID: ' + party.id + '<br/>' +
+      '멤버 수: ' + (party.members ? party.members.length : 0) + '명<br/>' +
+      (isLeader ? '<span style="color:var(--accent);">리더</span>' : '멤버') +
+      '</div>';
+    if (btnCreate) btnCreate.style.display = 'none';
+    if (btnLeave) btnLeave.style.display = 'block';
+  }
+
+  // 파티 멤버 렌더링
+  function renderPartyMembers(members) {
+    var container = document.getElementById('partyMembers');
+    if (!container) return;
+    if (members.length === 0) {
+      container.innerHTML = '<div class="empty-state">멤버가 없어요.</div>';
+      return;
+    }
+    var token = getAuthToken();
+    var me = null;
+    try {
+      var payload = JSON.parse(atob(token.split('.')[1]));
+      me = payload.userId;
+    } catch (e) {}
+    container.innerHTML = members.map(function(member) {
+      var isLeader = currentParty && currentParty.leaderId === member.id;
+      var isMe = member.id === me;
+      return '<div class="party-member' + (isLeader ? ' party-member-leader' : '') + '">' +
+        '<div class="party-member-name">' + escapeHtml(member.nickname) + (isMe ? ' (나)' : '') + '</div>' +
+        (isLeader ? '<div class="party-member-role">리더</div>' : '') +
+        '</div>';
+    }).join('');
+  }
+
+  // 파티 생성
+  function createParty() {
+    var token = getAuthToken();
+    if (!token) {
+      showToast('로그인이 필요해요.');
+      return;
+    }
+    fetch(API_BASE + '/api/party/create', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'Authorization': 'Bearer ' + token
+      }
+    })
+    .then(function(res) { return res.json(); })
+    .then(function(data) {
+      if (data.error) {
+        showToast(data.error);
+        return;
+      }
+      showToast('파티를 생성했어요.');
+      renderParty();
+    })
+    .catch(function(err) {
+      console.error('Party create error:', err);
+      showToast('파티 생성 중 오류가 발생했어요.');
+    });
+  }
+
+  // 파티 나가기
+  function leaveParty() {
+    var token = getAuthToken();
+    if (!token) {
+      showToast('로그인이 필요해요.');
+      return;
+    }
+    fetch(API_BASE + '/api/party/leave', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'Authorization': 'Bearer ' + token
+      }
+    })
+    .then(function(res) { return res.json(); })
+    .then(function(data) {
+      if (data.error) {
+        showToast(data.error);
+        return;
+      }
+      showToast(data.message || '파티에서 나갔어요.');
+      currentParty = null;
+      renderParty();
+    })
+    .catch(function(err) {
+      console.error('Party leave error:', err);
+      showToast('파티 나가기 중 오류가 발생했어요.');
+    });
+  }
+
+  // 소셜 탭 전환
+  function switchSocialTab(tabId) {
+    document.querySelectorAll('.social-tab-btn').forEach(function(btn) {
+      btn.classList.toggle('active', btn.getAttribute('data-social-tab') === tabId);
+    });
+    document.querySelectorAll('.social-content').forEach(function(content) {
+      content.style.display = 'none';
+    });
+    var target = document.getElementById('social-' + tabId);
+    if (target) target.style.display = 'block';
+  }
+
+  // HTML 이스케이프
+  function escapeHtml(text) {
+    var div = document.createElement('div');
+    div.textContent = text;
+    return div.innerHTML;
   }
 
   if (document.readyState === 'loading') {

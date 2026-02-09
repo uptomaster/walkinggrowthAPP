@@ -99,6 +99,52 @@ async function initTables() {
         updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
       );
     `);
+    
+    // friends 테이블 생성 (친구 관계)
+    await client.query(`
+      CREATE TABLE IF NOT EXISTS friends (
+        id SERIAL PRIMARY KEY,
+        user_id INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+        friend_id INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+        status TEXT NOT NULL DEFAULT 'pending',
+        created_at TIMESTAMPTZ NOT NULL DEFAULT CURRENT_TIMESTAMP,
+        updated_at TIMESTAMPTZ NOT NULL DEFAULT CURRENT_TIMESTAMP,
+        UNIQUE(user_id, friend_id),
+        CHECK(user_id != friend_id),
+        CHECK(status IN ('pending', 'accepted', 'blocked'))
+      );
+    `);
+    await client.query(`CREATE INDEX IF NOT EXISTS idx_friends_user ON friends(user_id);`);
+    await client.query(`CREATE INDEX IF NOT EXISTS idx_friends_friend ON friends(friend_id);`);
+    await client.query(`CREATE INDEX IF NOT EXISTS idx_friends_status ON friends(status);`);
+    
+    // chats 테이블 생성 (채팅 메시지)
+    await client.query(`
+      CREATE TABLE IF NOT EXISTS chats (
+        id SERIAL PRIMARY KEY,
+        sender_id INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+        receiver_id INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+        message TEXT NOT NULL,
+        read_at TIMESTAMPTZ,
+        created_at TIMESTAMPTZ NOT NULL DEFAULT CURRENT_TIMESTAMP,
+        CHECK(sender_id != receiver_id)
+      );
+    `);
+    await client.query(`CREATE INDEX IF NOT EXISTS idx_chats_sender ON chats(sender_id);`);
+    await client.query(`CREATE INDEX IF NOT EXISTS idx_chats_receiver ON chats(receiver_id);`);
+    await client.query(`CREATE INDEX IF NOT EXISTS idx_chats_created ON chats(created_at DESC);`);
+    
+    // parties 테이블 생성 (파티)
+    await client.query(`
+      CREATE TABLE IF NOT EXISTS parties (
+        id SERIAL PRIMARY KEY,
+        leader_id INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+        member_ids INTEGER[] NOT NULL DEFAULT '{}',
+        created_at TIMESTAMPTZ NOT NULL DEFAULT CURRENT_TIMESTAMP,
+        updated_at TIMESTAMPTZ NOT NULL DEFAULT CURRENT_TIMESTAMP
+      );
+    `);
+    await client.query(`CREATE INDEX IF NOT EXISTS idx_parties_leader ON parties(leader_id);`);
   } catch (err) {
     console.error('initTables error:', err);
     throw err;

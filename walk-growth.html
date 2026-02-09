@@ -77,6 +77,7 @@
       <button type="button" class="tab-btn" data-tab="storage"><span class="tab-emoji">📥</span>보관함</button>
       <button type="button" class="tab-btn" data-tab="shop"><span class="tab-emoji">🛒</span>상점</button>
       <button type="button" class="tab-btn" data-tab="equipment"><span class="tab-emoji">🎒</span>장비</button>
+      <button type="button" class="tab-btn" data-tab="social"><span class="tab-emoji">👥</span>친구</button>
       <button type="button" class="tab-btn" data-tab="story"><span class="tab-emoji">📖</span>스토리</button>
     </nav>
 
@@ -304,6 +305,77 @@
         </select>
         <button type="button" class="btn-enhance" id="btnEnhance">강화 시도</button>
         <p class="enhance-note">1~3강 실패 시 장비 파괴. 4~7강은 시도할 때 골드를 먼저 차감하고, 실패해도 장비는 유지돼요.</p>
+      </div>
+    </section>
+
+    <!-- 친구/채팅 탭 -->
+    <section class="page" id="page-social" role="tabpanel">
+      <div class="social-tabs">
+        <button type="button" class="social-tab-btn active" data-social-tab="friends">👥 친구</button>
+        <button type="button" class="social-tab-btn" data-social-tab="chat">💬 채팅</button>
+        <button type="button" class="social-tab-btn" data-social-tab="party">🎉 파티</button>
+      </div>
+
+      <!-- 친구 탭 -->
+      <div class="social-content" id="social-friends">
+        <div class="walk-card">
+          <h2 class="walk-title">친구 검색</h2>
+          <div style="display:flex;gap:0.5rem;margin-bottom:1rem;">
+            <input type="text" id="friendSearchInput" placeholder="닉네임으로 검색" class="course-input" style="flex:1;" />
+            <button type="button" class="btn-walk-start" id="btnFriendSearch" style="padding:0.65rem 1rem;">검색</button>
+          </div>
+          <div id="friendSearchResults"></div>
+        </div>
+        <div class="walk-card">
+          <h2 class="walk-title">친구 요청</h2>
+          <div id="friendRequestsList"></div>
+        </div>
+        <div class="walk-card">
+          <h2 class="walk-title">내 친구 목록</h2>
+          <div id="friendsList"></div>
+        </div>
+      </div>
+
+      <!-- 채팅 탭 -->
+      <div class="social-content" id="social-chat" style="display:none;">
+        <div class="walk-card">
+          <h2 class="walk-title">채팅 목록</h2>
+          <div id="chatList"></div>
+        </div>
+        <div class="walk-card" id="chatRoom" style="display:none;">
+          <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:1rem;">
+            <h2 class="walk-title" id="chatRoomTitle" style="margin:0;"></h2>
+            <button type="button" class="btn-walk-stop" id="btnCloseChat" style="padding:0.4rem 0.8rem;font-size:0.85rem;">닫기</button>
+          </div>
+          <div id="chatMessages" style="max-height:400px;overflow-y:auto;margin-bottom:1rem;padding:0.5rem;background:var(--bg-soft);border-radius:var(--radius);"></div>
+          <div style="display:flex;gap:0.5rem;">
+            <input type="text" id="chatMessageInput" placeholder="메시지 입력..." class="course-input" style="flex:1;" />
+            <button type="button" class="btn-walk-start" id="btnSendMessage" style="padding:0.65rem 1rem;">전송</button>
+          </div>
+        </div>
+      </div>
+
+      <!-- 파티 탭 -->
+      <div class="social-content" id="social-party" style="display:none;">
+        <div class="walk-card">
+          <h2 class="walk-title">내 파티</h2>
+          <div id="partyInfo"></div>
+          <div style="margin-top:1rem;">
+            <button type="button" class="btn-walk-start" id="btnCreateParty" style="width:100%;">새 파티 만들기</button>
+            <button type="button" class="btn-walk-stop" id="btnLeaveParty" style="width:100%;margin-top:0.5rem;display:none;">파티 나가기</button>
+          </div>
+        </div>
+        <div class="walk-card">
+          <h2 class="walk-title">파티 멤버</h2>
+          <div id="partyMembers"></div>
+        </div>
+        <div class="walk-card">
+          <h2 class="walk-title">파티 보너스</h2>
+          <p class="story-text" style="font-size:0.85rem;color:var(--text-muted);">
+            파티와 함께 산책하면 XP 보너스를 받을 수 있어요!<br/>
+            멤버 수에 따라 보너스: 2명 (+10%), 3명 (+20%), 4명 (+30%)
+          </p>
+        </div>
       </div>
     </section>
 
