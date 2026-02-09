@@ -2355,6 +2355,8 @@
             url: '/v2/user/me',
             success: function(res) {
               console.log('Kakao API response:', res);
+              console.log('Kakao account:', res.kakao_account);
+              console.log('Properties:', res.properties);
               try {
                 var socialId = res.id ? res.id.toString() : null;
                 if (!socialId) {
@@ -2362,17 +2364,25 @@
                   return;
                 }
                 
-                // 닉네임 추출 (안전하게)
-                var nickname = '카카오사용자';
-                if (res.kakao_account && res.kakao_account.profile && res.kakao_account.profile.nickname) {
-                  nickname = res.kakao_account.profile.nickname;
-                } else if (res.properties && res.properties.nickname) {
-                  nickname = res.properties.nickname;
+                // 닉네임 추출 (안전하게 - 여러 경로 확인)
+                var nickname = '카카오사용자' + Math.floor(Math.random() * 1000); // 기본값에 랜덤 숫자 추가
+                if (res.kakao_account) {
+                  if (res.kakao_account.profile && res.kakao_account.profile.nickname) {
+                    nickname = res.kakao_account.profile.nickname;
+                  } else if (res.kakao_account.profile_nickname) {
+                    nickname = res.kakao_account.profile_nickname;
+                  }
+                }
+                if (res.properties) {
+                  if (res.properties.nickname) {
+                    nickname = res.properties.nickname;
+                  }
                 }
                 
                 // 이메일은 권한 없음이므로 null로 설정
                 var email = null;
                 
+                console.log('Extracted nickname:', nickname, 'socialId:', socialId);
                 sendSocialLogin(provider, socialId, nickname, email);
               } catch (err) {
                 console.error('Kakao API response processing error:', err);

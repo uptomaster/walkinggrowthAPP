@@ -112,11 +112,20 @@ async function createUser(nickname, passwordHash, email = null) {
 
 async function createSocialUser(nickname, provider, socialId, email = null) {
   await ensureInit();
-  const res = await pool.query(
-    'INSERT INTO users (nickname, password_hash, social_provider, social_id, email) VALUES ($1, NULL, $2, $3, $4) RETURNING id',
-    [nickname, provider, socialId, email]
-  );
-  return res.rows[0].id;
+  try {
+    const res = await pool.query(
+      'INSERT INTO users (nickname, password_hash, social_provider, social_id, email) VALUES ($1, NULL, $2, $3, $4) RETURNING id',
+      [nickname, provider, socialId, email]
+    );
+    if (!res || !res.rows || !res.rows[0] || !res.rows[0].id) {
+      console.error('createSocialUser: Invalid response from DB', res);
+      throw new Error('사용자 생성 실패: DB 응답이 올바르지 않아요.');
+    }
+    return res.rows[0].id;
+  } catch (err) {
+    console.error('createSocialUser error:', err);
+    throw err;
+  }
 }
 
 async function findUserByNickname(nickname) {

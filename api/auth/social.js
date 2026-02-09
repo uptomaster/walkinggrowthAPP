@@ -9,7 +9,9 @@ module.exports = async (req, res) => {
   }
   try {
     const { provider, socialId, nickname, email } = req.body || {};
+    console.log('Social login request:', { provider, socialId, nickname: nickname?.substring(0, 20), email: email ? 'provided' : 'null' });
     if (!provider || !socialId || !nickname) {
+      console.error('Missing required fields:', { provider: !!provider, socialId: !!socialId, nickname: !!nickname });
       return res.status(400).json({ error: '필수 정보가 누락되었어요.' });
     }
     if (provider !== 'kakao' && provider !== 'google') {
@@ -20,6 +22,10 @@ module.exports = async (req, res) => {
     let user = await findUserBySocial(provider, socialId);
     if (user) {
       // 기존 계정 로그인
+      if (!user.nickname) {
+        console.error('Existing user has no nickname:', user);
+        return res.status(500).json({ error: '사용자 정보가 올바르지 않아요.' });
+      }
       const token = jwt.sign(
         { userId: user.id, nickname: user.nickname },
         JWT_SECRET,
@@ -34,13 +40,23 @@ module.exports = async (req, res) => {
     // 새 계정 생성
     const emailTrimmed = email ? email.trim().toLowerCase() : null;
     // 닉네임 중복 확인 및 처리
-    let finalNickname = nickname.trim();
+    let finalNickname = (nickname || '').trim();
+    if (!finalNickname || finalNickname.length < 2) {
+      finalNickname = '카카오사용자' + Math.floor(Math.random() * 10000);
+    }
     let suffix = 1;
+    const originalNickname = finalNickname;
     while (await findUserByNickname(finalNickname)) {
-      finalNickname = nickname.trim() + suffix;
+      finalNickname = originalNickname + suffix;
       suffix++;
+      if (suffix > 1000) {
+        // 무한 루프 방지
+        finalNickname = originalNickname + '_' + Date.now();
+        break;
+      }
     }
     
+    console.log('Creating social user:', { finalNickname, provider, socialId: socialId?.substring(0, 10) + '...', email: emailTrimmed ? 'provided' : 'null' });
     const userId = await createSocialUser(finalNickname, provider, socialId, emailTrimmed);
     if (!userId) {
       console.error('createSocialUser returned null/undefined');
