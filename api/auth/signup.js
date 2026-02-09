@@ -1,6 +1,6 @@
 const bcrypt = require('bcrypt');
 const jwt = require('jsonwebtoken');
-const { createUser, findUserByNickname, findUserById } = require('../../server/db');
+const { createUser, findUserByNickname, findUserByEmail, findUserById } = require('../../server/db');
 
 const JWT_SECRET = process.env.JWT_SECRET || 'change-me-in-production';
 const SALT_ROUNDS = 12;
@@ -10,21 +10,31 @@ module.exports = async (req, res) => {
     return res.status(405).json({ error: 'Method not allowed' });
   }
   try {
-    const { nickname, password } = req.body || {};
+    const { nickname, password, email } = req.body || {};
     const nick = (nickname || '').trim();
     const pw = password || '';
+    const emailTrimmed = email ? email.trim().toLowerCase() : null;
     if (nick.length < 2) {
       return res.status(400).json({ error: '닉네임은 2자 이상이에요.' });
     }
     if (pw.length < 6) {
       return res.status(400).json({ error: '비밀번호는 6자 이상이에요.' });
     }
+    if (emailTrimmed && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(emailTrimmed)) {
+      return res.status(400).json({ error: '올바른 이메일 형식이 아니에요.' });
+    }
     const existing = await findUserByNickname(nick);
     if (existing) {
       return res.status(409).json({ error: '이미 사용 중인 닉네임이에요.' });
     }
+    if (emailTrimmed) {
+      const existingEmail = await findUserByEmail(emailTrimmed);
+      if (existingEmail) {
+        return res.status(409).json({ error: '이미 사용 중인 이메일이에요.' });
+      }
+    }
     const passwordHash = await bcrypt.hash(pw, SALT_ROUNDS);
-    const userId = await createUser(nick, passwordHash);
+    const userId = await createUser(nick, passwordHash, emailTrimmed);
     const user = await findUserById(userId);
     const token = jwt.sign(
       { userId: user.id, nickname: user.nickname },

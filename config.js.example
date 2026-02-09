@@ -1,0 +1,10 @@
+// 앱 설정 파일 예제
+// 이 파일을 복사해서 config.js로 만들고 실제 키를 입력하세요
+window.APP_CONFIG = {
+  kakao: {
+    javascriptKey: 'YOUR_KAKAO_JAVASCRIPT_KEY'
+  },
+  google: {
+    clientId: 'YOUR_GOOGLE_CLIENT_ID'
+  }
+};
