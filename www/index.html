@@ -4,15 +4,52 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
   <meta name="theme-color" content="#00d4aa">
+  <meta name="mobile-web-app-capable" content="yes">
   <meta name="apple-mobile-web-app-capable" content="yes">
   <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
-  <meta name="apple-mobile-web-app-title" content="산책 성장기">
-  <title>산책 성장기 · 산책 = 훈련, 게임처럼 성장하는 캐주얼 워킹</title>
+  <meta name="apple-mobile-web-app-title" content="WalkStory">
+  <title>WalkStory · 걸음으로 키우는 나만의 동물 친구</title>
   <link rel="manifest" href="manifest.json">
-  <link rel="apple-touch-icon" href="icon.svg">
+  <link rel="icon" type="image/png" href="./walkstory-logo.png">
+  <link rel="apple-touch-icon" href="./walkstory-logo.png">
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;500;600;700&display=swap" rel="stylesheet">
+  <script src="config.js"></script>
+  <script src="https://developers.kakao.com/sdk/js/kakao.js"></script>
+  <script>
+    // Capacitor 감지 (모바일 앱 환경 확인)
+    // 더 강력한 감지 로직: 여러 방법으로 확인
+    window.isCapacitorApp = typeof window !== 'undefined' && (
+      window.Capacitor !== undefined ||
+      window.capacitor !== undefined ||
+      (window.location && (
+        window.location.protocol === 'capacitor:' ||
+        window.location.protocol === 'http:' && window.location.hostname === 'localhost' && navigator.userAgent.includes('Android')
+      )) ||
+      (navigator.userAgent && (
+        navigator.userAgent.includes('Capacitor') ||
+        (navigator.userAgent.includes('Android') && window.location && window.location.hostname === 'localhost')
+      ))
+    );
+    
+    // 디버깅용 로그
+    if (typeof window !== 'undefined') {
+      console.log('Capacitor detection:', {
+        Capacitor: window.Capacitor !== undefined,
+        capacitor: window.capacitor !== undefined,
+        protocol: window.location ? window.location.protocol : 'N/A',
+        hostname: window.location ? window.location.hostname : 'N/A',
+        userAgent: navigator.userAgent,
+        isCapacitorApp: window.isCapacitorApp
+      });
+    }
+    
+    // 카카오 SDK 초기화
+    if (typeof window !== 'undefined' && window.APP_CONFIG && window.APP_CONFIG.kakao) {
+      Kakao.init(window.APP_CONFIG.kakao.javascriptKey);
+    }
+  </script>
   <style>
     /* 나이트 (기본) - 부드러운 다크 그린 톤 */
     :root, [data-theme="night"] {
@@ -103,8 +140,27 @@
     .header-auth-btn { font-size: 0.7rem; padding: 0.3rem 0.5rem; border-radius: 0.5rem; border: 1px solid rgba(255,255,255,0.2); background: var(--card); color: var(--text-muted); cursor: pointer; font-family: inherit; font-weight: 500; }
     .header-auth-btn:hover { color: var(--accent); border-color: var(--accent); }
     .header-auth-btn.logged-in { border-color: var(--accent); color: var(--accent); }
-    .auth-overlay { position: fixed; inset: 0; background: rgba(0,0,0,0.6); z-index: 200; display: flex; align-items: center; justify-content: center; padding: 1rem; }
-    .auth-modal { background: var(--card); border-radius: var(--radius-lg); padding: 1.5rem; max-width: 320px; width: 100%; border: 1px solid rgba(255,255,255,0.08); box-shadow: var(--shadow); position: relative; }
+    .header-logout-btn { font-size: 0.7rem; padding: 0.3rem 0.5rem; border-radius: 0.5rem; border: 1px solid rgba(255,255,255,0.2); background: var(--card); color: var(--text-muted); cursor: pointer; font-family: inherit; font-weight: 500; }
+    .header-logout-btn:hover { color: #ef4444; border-color: #ef4444; }
+    .auth-overlay { position: fixed; inset: 0; background: rgba(0,0,0,0.6); z-index: 200; display: flex; align-items: center; justify-content: center; padding: 1rem; transition: opacity 0.3s ease, visibility 0.3s ease; }
+    .auth-overlay.fade-out { opacity: 0; visibility: hidden; }
+    .auth-modal { background: var(--card); border-radius: var(--radius-lg); padding: 1.5rem; max-width: 320px; width: 100%; border: 1px solid rgba(255,255,255,0.08); box-shadow: var(--shadow); position: relative; transition: transform 0.3s ease, opacity 0.3s ease; }
+    .auth-overlay.fade-out .auth-modal { transform: scale(0.95); opacity: 0; }
+    .auth-loading { display: none; text-align: center; padding: 2rem; }
+    .auth-loading.active { display: block; }
+    .auth-loading-spinner { width: 40px; height: 40px; border: 3px solid var(--accent-dim); border-top-color: var(--accent); border-radius: 50%; margin: 0 auto 1rem; animation: spin 0.8s linear infinite; }
+    @keyframes spin { to { transform: rotate(360deg); } }
+    .tutorial-modal { display: flex; position: fixed; inset: 0; background: rgba(0,0,0,0.8); z-index: 400; align-items: center; justify-content: center; padding: 1rem; }
+    .welcome-modal { display: none; position: fixed; inset: 0; background: rgba(0,0,0,0.7); z-index: 300; align-items: center; justify-content: center; padding: 1rem; animation: fadeIn 0.3s ease; }
+    .welcome-modal.show { display: flex; }
+    .welcome-content { background: var(--card); border-radius: var(--radius-lg); padding: 2rem; max-width: 320px; width: 100%; text-align: center; border: 1px solid rgba(255,255,255,0.08); box-shadow: var(--shadow); animation: slideUp 0.4s ease; }
+    @keyframes slideUp { from { transform: translateY(20px); opacity: 0; } to { transform: translateY(0); opacity: 1; } }
+    .welcome-icon { font-size: 4rem; margin-bottom: 1rem; animation: bounce 0.6s ease; }
+    @keyframes bounce { 0%, 100% { transform: translateY(0); } 50% { transform: translateY(-10px); } }
+    .welcome-title { font-size: 1.25rem; font-weight: 600; color: var(--accent); margin-bottom: 0.5rem; }
+    .welcome-message { color: var(--text-muted); margin-bottom: 1.5rem; }
+    .btn-welcome-close { background: var(--accent); color: var(--bg); border: none; border-radius: var(--radius); padding: 0.75rem 2rem; font-size: 0.9rem; font-weight: 600; cursor: pointer; transition: transform 0.2s ease, box-shadow 0.2s ease; }
+    .btn-welcome-close:active { transform: scale(0.95); }
     .auth-tabs { display: flex; gap: 0.25rem; margin-bottom: 1rem; }
     .auth-tab { flex: 1; padding: 0.5rem; border: none; border-radius: var(--radius); background: var(--bg-soft); color: var(--text-muted); font-size: 0.85rem; font-family: inherit; cursor: pointer; }
     .auth-tab.active { background: var(--accent-dim); color: var(--accent); font-weight: 600; }
@@ -113,9 +169,37 @@
     .auth-panel input { width: 100%; padding: 0.6rem; border-radius: var(--radius); border: 1px solid rgba(255,255,255,0.15); background: var(--bg-soft); color: var(--text); font-size: 0.9rem; box-sizing: border-box; }
     .btn-auth-submit { width: 100%; margin-top: 1rem; padding: 0.65rem; border: none; border-radius: var(--radius); background: linear-gradient(145deg, var(--accent), #10b981); color: var(--bg); font-weight: 600; font-family: inherit; cursor: pointer; font-size: 0.9rem; }
     .auth-hint { font-size: 0.7rem; color: var(--text-muted); margin-top: 0.75rem; }
+    .auth-link-btn { font-size: 0.8rem; }
+    .auth-divider { display: flex; align-items: center; margin: 1rem 0; text-align: center; }
+    .auth-divider::before, .auth-divider::after { content: ''; flex: 1; height: 1px; background: rgba(255,255,255,0.1); }
+    .auth-divider span { padding: 0 0.75rem; color: var(--text-muted); font-size: 0.75rem; }
+    .btn-social { width: 100%; padding: 0.65rem; border: none; border-radius: var(--radius); font-weight: 600; font-family: inherit; cursor: pointer; font-size: 0.9rem; margin-top: 0.5rem; display: flex; align-items: center; justify-content: center; gap: 0.5rem; }
+    .btn-kakao { background: #FEE500; color: #000; }
+    .btn-kakao:hover { background: #FDD835; }
+    .btn-google { background: #fff; color: #000; border: 1px solid rgba(255,255,255,0.2); }
+    .btn-google:hover { background: #f5f5f5; }
     .auth-close { position: absolute; top: 0.75rem; right: 0.75rem; width: 28px; height: 28px; border: none; border-radius: 50%; background: var(--bg-soft); color: var(--text-muted); cursor: pointer; font-size: 1rem; line-height: 1; }
     .auth-overlay.auth-gate { align-items: center; justify-content: center; }
     .auth-overlay.auth-gate .auth-close { display: none; }
+    .pet-section { background: var(--card); border-radius: var(--radius-lg); padding: 1rem; margin-bottom: 1rem; border: 1px solid rgba(255,255,255,0.08); }
+    .pet-display { text-align: center; }
+    .pet-preview { display: flex; flex-direction: column; align-items: center; gap: 1rem; margin-bottom: 1rem; }
+    .pet-emoji { font-size: 4rem; line-height: 1; }
+    .pet-info { width: 100%; }
+    .pet-name { font-size: 1.1rem; font-weight: 600; color: var(--text); margin-bottom: 0.5rem; }
+    .pet-level { font-size: 0.9rem; color: var(--accent); font-weight: 600; margin-bottom: 0.5rem; }
+    .pet-exp-bar { width: 100%; height: 8px; background: var(--bg-soft); border-radius: 999px; overflow: hidden; margin-bottom: 0.5rem; }
+    .pet-exp-fill { height: 100%; background: linear-gradient(90deg, var(--accent), #10b981); border-radius: 999px; transition: width 0.3s ease; }
+    .pet-exp-text { font-size: 0.75rem; color: var(--text-muted); }
+    .btn-select-pet { width: 100%; padding: 0.65rem; border: none; border-radius: var(--radius); background: linear-gradient(145deg, var(--accent), #10b981); color: var(--bg); font-weight: 600; font-family: inherit; cursor: pointer; font-size: 0.9rem; }
+    .pet-select-modal { background: var(--card); border-radius: var(--radius-lg); padding: 1.5rem; max-width: 400px; width: 100%; border: 1px solid rgba(255,255,255,0.08); box-shadow: var(--shadow); }
+    .pet-grid { display: grid; grid-template-columns: repeat(2, 1fr); gap: 0.75rem; margin-top: 1rem; }
+    .pet-item { background: var(--bg-soft); border: 2px solid rgba(255,255,255,0.1); border-radius: var(--radius); padding: 1rem; cursor: pointer; transition: all 0.2s; text-align: center; }
+    .pet-item:hover { border-color: var(--accent); background: var(--accent-dim); }
+    .pet-item.selected { border-color: var(--accent); background: var(--accent-dim); }
+    .pet-item-emoji { font-size: 2.5rem; margin-bottom: 0.5rem; }
+    .pet-item-name { font-size: 0.9rem; font-weight: 600; color: var(--text); margin-bottom: 0.25rem; }
+    .pet-item-desc { font-size: 0.7rem; color: var(--text-muted); }
     #appMain { display: block; }
     #appMain.hidden { display: none !important; }
     .attendance-card { background: linear-gradient(145deg, var(--card), rgba(251,191,36,0.06)); border: 1px solid rgba(251,191,36,0.2); border-radius: var(--radius-lg); padding: 1rem; margin-bottom: 1rem; box-shadow: var(--shadow); }
@@ -158,6 +242,9 @@
     .page { display: none; width: 100%; animation: fadeIn 0.25s ease; }
     .page.active { display: block; }
     @keyframes fadeIn { from { opacity: 0; } to { opacity: 1; } }
+    @keyframes slideDown { from { transform: translateX(-50%) translateY(-20px); opacity: 0; } to { transform: translateX(-50%) translateY(0); opacity: 1; } }
+    @keyframes slideUp { from { transform: translateX(-50%) translateY(0); opacity: 1; } to { transform: translateX(-50%) translateY(-20px); opacity: 0; } }
+    .wild-animal-notification { animation: slideDown 0.3s ease; }
 
     /* ===== 카드 공통 ===== */
     .step-card, .walk-card, .avatar-section, .story-section {
@@ -513,8 +600,8 @@
     <div id="appMain" class="hidden">
     <header>
       <button type="button" class="theme-toggle" id="themeToggle" title="모닝/나이트 전환">🌙</button>
-      <h1>산책 성장기</h1>
-      <p class="subtitle">걸음으로 성장하는 나만의 이야기</p>
+      <h1>WalkStory</h1>
+      <p class="subtitle">걸음으로 키우는 나만의 동물 친구</p>
       <div class="header-level" id="headerLevel">
         <span>Lv.<span class="lv-num" id="levelNum">1</span></span>
         <div class="level-bar-wrap"><div class="level-bar-fill" id="levelBarFill" style="width:0%"></div></div>
@@ -522,6 +609,7 @@
       <p class="title-badge" id="titleBadge">산책러</p>
       <div class="header-right">
         <button type="button" class="header-auth-btn" id="btnHeaderAuth" aria-label="로그인">🔐 로그인</button>
+        <button type="button" class="header-logout-btn" id="btnLogout" aria-label="로그아웃" style="display:none;">로그아웃</button>
         <span class="gold-display">🪙 <span id="headerGold">0</span> G</span>
       </div>
     </header>
@@ -628,6 +716,23 @@
             <div class="ah-leg-r" id="previewLegR" style="background:var(--bottom-color,#4b5563)"></div>
             <div class="ah-slot-head" id="previewHat"></div>
             <div class="ah-slot-accessory" id="previewWeapon"></div>
+          </div>
+        </div>
+        <div class="pet-section" id="petSection">
+          <p class="customize-section-title">나만의 동물 친구</p>
+          <div class="pet-display" id="petDisplay">
+            <div class="pet-preview" id="petPreview">
+              <div class="pet-emoji" id="petEmoji" style="font-size: 4rem;">🐾</div>
+              <div class="pet-info" id="petInfo">
+                <div class="pet-name" id="petName">동물을 선택해주세요</div>
+                <div class="pet-level" id="petLevel">Lv.1</div>
+                <div class="pet-exp-bar">
+                  <div class="pet-exp-fill" id="petExpFill" style="width: 0%"></div>
+                </div>
+                <div class="pet-exp-text" id="petExpText">경험치: 0 / 100</div>
+              </div>
+            </div>
+            <button type="button" class="btn-select-pet" id="btnSelectPet">동물 선택하기</button>
           </div>
         </div>
         <p class="customize-section-title">기본 정보</p>
@@ -753,11 +858,49 @@
           <p class="achievement-title">🏆 업적</p>
           <div class="achievement-grid" id="achievementGrid"></div>
         </div>
+        <div class="animal-collection-section" style="margin-top: 2rem;">
+          <p class="achievement-title">🦋 동물 컬렉션</p>
+          <p style="color: var(--text-muted); font-size: 0.85rem; margin-bottom: 1rem;">산책 중 발견한 동물들을 모아보세요!</p>
+          <div class="animal-collection-grid" id="animalCollectionGrid" style="display: grid; grid-template-columns: repeat(auto-fill, minmax(100px, 1fr)); gap: 1rem;"></div>
+        </div>
       </div>
     </section>
     </div>
 
     <!-- 로그인/회원가입 (비로그인 시 첫 화면, 로그인 후 메인만 표시) -->
+    <!-- 튜토리얼 모달 -->
+    <div class="tutorial-modal" id="tutorialModal" style="display: none;">
+      <div class="tutorial-content" style="background: var(--card); border-radius: var(--radius-lg); padding: 2rem; max-width: 400px; width: 90%; position: relative; animation: slideUp 0.4s ease;">
+        <button type="button" class="tutorial-close" id="tutorialClose" style="position: absolute; top: 1rem; right: 1rem; background: none; border: none; color: var(--text-muted); font-size: 1.5rem; cursor: pointer;">×</button>
+        <div class="tutorial-slide" id="tutorialSlide">
+          <div class="tutorial-icon" id="tutorialIcon" style="font-size: 4rem; text-align: center; margin-bottom: 1rem;">👋</div>
+          <div class="tutorial-title" id="tutorialTitle" style="font-size: 1.25rem; font-weight: 600; text-align: center; margin-bottom: 0.5rem;">WalkStory에 오신 것을 환영합니다!</div>
+          <div class="tutorial-text" id="tutorialText" style="color: var(--text-muted); text-align: center; margin-bottom: 1.5rem; line-height: 1.6;"></div>
+          <div class="tutorial-progress" id="tutorialProgress" style="text-align: center; margin-bottom: 1rem; font-size: 0.85rem; color: var(--text-muted);"></div>
+          <div class="tutorial-buttons" style="display: flex; gap: 0.5rem;">
+            <button type="button" class="btn-tutorial-prev" id="btnTutorialPrev" style="flex: 1; background: var(--bg-soft); color: var(--text); border: none; border-radius: var(--radius); padding: 0.75rem; font-weight: 600; cursor: pointer; display: none;">이전</button>
+            <button type="button" class="btn-tutorial-next" id="btnTutorialNext" style="flex: 1; background: var(--accent); color: var(--bg); border: none; border-radius: var(--radius); padding: 0.75rem; font-weight: 600; cursor: pointer;">다음</button>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- 환영 모달 -->
+    <div class="welcome-modal" id="welcomeModal">
+      <div class="welcome-content">
+        <div class="welcome-icon">🎉</div>
+        <div class="welcome-title" id="welcomeTitle">환영합니다!</div>
+        <div class="welcome-message" id="welcomeMessage">로그인 성공</div>
+        <button type="button" class="btn-welcome-close" id="btnWelcomeClose">시작하기</button>
+      </div>
+    </div>
+
+    <!-- 로딩 오버레이 -->
+    <div class="auth-loading" id="authLoading">
+      <div class="auth-loading-spinner"></div>
+      <div style="color: var(--text-muted); font-size: 0.9rem;">로그인 중...</div>
+    </div>
+
     <div class="auth-overlay auth-gate" id="authOverlay" role="dialog" aria-modal="true" aria-labelledby="authTitle">
       <div class="auth-modal">
         <div class="auth-tabs">
@@ -770,19 +913,77 @@
           <input type="text" id="authLoginNick" placeholder="닉네임" maxlength="12" inputmode="text" autocomplete="username" />
           <label>비밀번호</label>
           <input type="password" id="authLoginPw" placeholder="비밀번호" autocomplete="current-password" />
+          <div style="display: flex; justify-content: space-between; margin-top: 0.5rem; font-size: 0.75rem;">
+            <button type="button" class="auth-link-btn" id="btnFindId" style="background: none; border: none; color: var(--accent); cursor: pointer; padding: 0;">아이디 찾기</button>
+            <button type="button" class="auth-link-btn" id="btnFindPw" style="background: none; border: none; color: var(--accent); cursor: pointer; padding: 0;">비밀번호 찾기</button>
+          </div>
           <button type="button" class="btn-auth-submit" id="btnAuthLogin">로그인</button>
+          <div class="auth-divider">
+            <span>또는</span>
+          </div>
+          <button type="button" class="btn-social btn-kakao" id="btnKakaoLogin">
+            <span>카카오로 시작하기</span>
+          </button>
+          <button type="button" class="btn-social btn-google" id="btnGoogleLogin">
+            <span>구글로 시작하기</span>
+          </button>
         </div>
         <div id="authSignupPanel" class="auth-panel" style="display:none;">
           <label>닉네임</label>
           <input type="text" id="authSignupNick" placeholder="2~12자" maxlength="12" inputmode="text" autocomplete="username" />
+          <label>이메일 <span style="color: #ef4444;">*</span></label>
+          <input type="email" id="authSignupEmail" placeholder="example@email.com" required inputmode="email" autocomplete="email" />
           <label>비밀번호</label>
           <input type="password" id="authSignupPw" placeholder="6자 이상" autocomplete="new-password" />
           <label>비밀번호 확인</label>
           <input type="password" id="authSignupPw2" placeholder="다시 입력" autocomplete="new-password" />
           <button type="button" class="btn-auth-submit" id="btnAuthSignup">가입하기</button>
+          <div class="auth-divider">
+            <span>또는</span>
+          </div>
+          <button type="button" class="btn-social btn-kakao" id="btnKakaoSignup">
+            <span>카카오로 시작하기</span>
+          </button>
+          <button type="button" class="btn-social btn-google" id="btnGoogleSignup">
+            <span>구글로 시작하기</span>
+          </button>
         </div>
-        <p class="auth-hint">※ 비밀번호는 서버에서 암호화되어 저장되며, 게임 데이터는 DB에 동기화됩니다.</p>
+        <div id="authFindIdPanel" class="auth-panel" style="display:none;">
+          <label>이메일</label>
+          <input type="email" id="authFindIdEmail" placeholder="가입 시 입력한 이메일" inputmode="email" autocomplete="email" />
+          <button type="button" class="btn-auth-submit" id="btnFindIdSubmit">아이디 찾기</button>
+          <div id="findIdResult" style="margin-top: 1rem; padding: 0.75rem; background: var(--bg-soft); border-radius: var(--radius); display: none;"></div>
+          <button type="button" class="auth-link-btn" id="btnBackToLogin" style="width: 100%; margin-top: 0.5rem; background: none; border: none; color: var(--accent); cursor: pointer; padding: 0.5rem;">← 로그인으로 돌아가기</button>
+        </div>
+        <div id="authFindPwPanel" class="auth-panel" style="display:none;">
+          <label>이메일</label>
+          <input type="email" id="authFindPwEmail" placeholder="가입 시 입력한 이메일" inputmode="email" autocomplete="email" />
+          <button type="button" class="btn-auth-submit" id="btnFindPwSubmit">비밀번호 재설정 링크 발송</button>
+          <div id="findPwResult" style="margin-top: 1rem; padding: 0.75rem; background: var(--bg-soft); border-radius: var(--radius); display: none;"></div>
+          <div id="authResetPwPanel" style="display:none; margin-top: 1rem;">
+            <label>재설정 토큰</label>
+            <input type="text" id="authResetToken" placeholder="이메일로 받은 토큰 입력" />
+            <label>새 비밀번호</label>
+            <input type="password" id="authResetPw" placeholder="6자 이상" autocomplete="new-password" />
+            <label>새 비밀번호 확인</label>
+            <input type="password" id="authResetPw2" placeholder="다시 입력" autocomplete="new-password" />
+            <button type="button" class="btn-auth-submit" id="btnResetPwSubmit">비밀번호 재설정</button>
+          </div>
+          <button type="button" class="auth-link-btn" id="btnBackToLogin2" style="width: 100%; margin-top: 0.5rem; background: none; border: none; color: var(--accent); cursor: pointer; padding: 0.5rem;">← 로그인으로 돌아가기</button>
+        </div>
+        
         <button type="button" class="auth-close" id="authClose" aria-label="닫기">✕</button>
+      </div>
+    </div>
+    
+    <!-- 동물 선택 모달 -->
+    <div class="auth-overlay" id="petSelectOverlay" style="display:none;" role="dialog" aria-modal="true">
+      <div class="pet-select-modal">
+        <h2 class="auth-title">동물 친구 선택하기</h2>
+        <p style="font-size: 0.85rem; color: var(--text-muted); margin-bottom: 1rem;">걸음을 걸어 함께 성장할 동물 친구를 선택해주세요!</p>
+        <div class="pet-grid" id="petGrid"></div>
+        <button type="button" class="btn-auth-submit" id="btnConfirmPet" style="margin-top: 1rem;">선택하기</button>
+        <button type="button" class="auth-close" id="petSelectClose" aria-label="닫기">✕</button>
       </div>
     </div>
   </div>
@@ -792,12 +993,64 @@
   <script>
 (function () {
   const GOAL = 10000;
-  var API_BASE = (typeof location !== 'undefined' && location.protocol === 'file:') ? 'http://localhost:3000' : '';
+  // API_BASE 설정: 모바일 앱 감지 우선순위로 처리
+  var API_BASE = '';
+  var isCapacitorApp = typeof window !== 'undefined' && window.isCapacitorApp;
+  
+  // 모바일 앱 감지: 여러 방법으로 확인
+  var isMobileApp = isCapacitorApp || 
+    (typeof location !== 'undefined' && location.protocol === 'capacitor:') ||
+    (typeof location !== 'undefined' && location.hostname === 'localhost' && navigator.userAgent && navigator.userAgent.includes('Android') && !navigator.userAgent.includes('Chrome/')) ||
+    (navigator.userAgent && navigator.userAgent.includes('Capacitor'));
+  
+  if (isMobileApp) {
+    // 모바일 앱에서는 항상 Vercel URL 사용
+    API_BASE = 'https://walkinggrowth-app.vercel.app';
+    console.log('모바일 앱 감지됨 - Vercel URL 사용');
+  } else if (typeof location !== 'undefined') {
+    if (location.protocol === 'file:') {
+      API_BASE = 'http://localhost:3000';
+    } else if (location.hostname === 'localhost' || location.hostname === '127.0.0.1') {
+      // localhost 접속 시: 추가로 모바일 앱인지 확인
+      // Android WebView는 Chrome이 아닌 경우가 많음
+      var isAndroidApp = navigator.userAgent && 
+        navigator.userAgent.includes('Android') && 
+        !navigator.userAgent.includes('Chrome/') &&
+        !navigator.userAgent.includes('Version/');
+      
+      if (isAndroidApp || isCapacitorApp) {
+        // 모바일 앱에서는 Vercel URL 사용
+        API_BASE = 'https://walkinggrowth-app.vercel.app';
+        console.log('localhost 접속이지만 모바일 앱으로 감지됨 - Vercel URL 사용');
+      } else {
+        // 웹 브라우저에서 localhost 접속 시에만 로컬 서버 사용
+        API_BASE = 'http://localhost:3000';
+      }
+    } else {
+      // 웹 브라우저에서는 현재 도메인 사용
+      API_BASE = location.origin;
+    }
+  } else {
+    // location이 없는 경우 - 모바일 앱일 가능성이 높음
+    API_BASE = 'https://walkinggrowth-app.vercel.app';
+  }
+  
+  console.log('API_BASE 설정 완료:', {
+    API_BASE: API_BASE,
+    location: typeof location !== 'undefined' ? location.href : 'N/A',
+    protocol: typeof location !== 'undefined' ? location.protocol : 'N/A',
+    hostname: typeof location !== 'undefined' ? location.hostname : 'N/A',
+    isCapacitorApp: isCapacitorApp,
+    isMobileApp: isMobileApp,
+    Capacitor: typeof window !== 'undefined' && window.Capacitor !== undefined,
+    userAgent: navigator.userAgent
+  });
   const TOKEN_KEY = 'walk_token';
   function getAuthToken() { try { return localStorage.getItem(TOKEN_KEY); } catch (e) { return null; } }
   function setAuthToken(t) { try { if (t) localStorage.setItem(TOKEN_KEY, t); else localStorage.removeItem(TOKEN_KEY); } catch (e) {} }
   function clearAuthToken() { setAuthToken(null); }
   const STORAGE_KEYS = {
+    pet: 'walk_pet',
     steps: 'pedometer_steps',
     date: 'pedometer_date',
     lifetime: 'walk_lifetime_steps',
@@ -821,7 +1074,10 @@
     user: 'walk_user',
     loggedIn: 'walk_logged_in',
     attendanceDate: 'walk_attendance_date',
-    attendanceStreak: 'walk_attendance_streak'
+    attendanceStreak: 'walk_attendance_streak',
+    tutorialCompleted: 'walk_tutorial_completed',
+    wildAnimals: 'walk_wild_animals',
+    capturedAnimals: 'walk_captured_animals'
   };
   var ATTENDANCE_DAILY_GOLD = [10, 15, 20, 25, 30, 40];
   var ATTENDANCE_7DAY_BOX_NAME = '위클리 마스터 선물상자';
@@ -863,6 +1119,29 @@
     var nextXp = 50 * level * level;
     return { level: level, current: xp - prevXp, need: nextXp - prevXp };
   }
+  // 야생 동물 데이터
+  var WILD_ANIMALS = [
+    // 커먼 (60%)
+    { id: 'rabbit', name: '토끼', emoji: '🐰', rarity: 'common', spawnChance: 0.3, description: '귀여운 토끼예요!' },
+    { id: 'squirrel', name: '다람쥐', emoji: '🐿️', rarity: 'common', spawnChance: 0.3, description: '재빠른 다람쥐예요!' },
+    { id: 'bird', name: '새', emoji: '🐦', rarity: 'common', spawnChance: 0.25, description: '자유로운 새예요!' },
+    { id: 'duck', name: '오리', emoji: '🦆', rarity: 'common', spawnChance: 0.15, description: '물가의 오리예요!' },
+    // 레어 (25%)
+    { id: 'deer', name: '사슴', emoji: '🦌', rarity: 'rare', spawnChance: 0.15, description: '우아한 사슴이에요!' },
+    { id: 'fox', name: '여우', emoji: '🦊', rarity: 'rare', spawnChance: 0.12, description: '영리한 여우예요!' },
+    { id: 'hedgehog', name: '고슴도치', emoji: '🦔', rarity: 'rare', spawnChance: 0.1, description: '뾰족한 고슴도치예요!' },
+    { id: 'owl', name: '부엉이', emoji: '🦉', rarity: 'rare', spawnChance: 0.08, description: '지혜로운 부엉이예요!' },
+    // 에픽 (12%)
+    { id: 'wolf', name: '늑대', emoji: '🐺', rarity: 'epic', spawnChance: 0.05, description: '강인한 늑대예요!' },
+    { id: 'bear', name: '곰', emoji: '🐻', rarity: 'epic', spawnChance: 0.04, description: '힘센 곰이에요!' },
+    { id: 'eagle', name: '독수리', emoji: '🦅', rarity: 'epic', spawnChance: 0.03, description: '위엄 있는 독수리예요!' },
+    // 레전드 (3%)
+    { id: 'phoenix', name: '불사조', emoji: '🔥', rarity: 'legend', spawnChance: 0.01, description: '전설의 불사조예요!' },
+    { id: 'dragon', name: '용', emoji: '🐉', rarity: 'legend', spawnChance: 0.008, description: '신화 속 용이에요!' },
+    { id: 'unicorn', name: '유니콘', emoji: '🦄', rarity: 'legend', spawnChance: 0.007, description: '마법의 유니콘이에요!' },
+    { id: 'pegasus', name: '페가수스', emoji: '🦋', rarity: 'legend', spawnChance: 0.005, description: '하늘을 나는 페가수스예요!' }
+  ];
+  
   var ACHIEVEMENTS = [
     { id: 'first_walk', name: '첫 걸음', desc: '첫 산책 시작', icon: '👣', check: function() { return totalXp >= 10; } },
     { id: 'km1', name: '1km 달성', desc: '총 1km 산책', icon: '🛤️', check: function() { return totalXp >= 100; } },
@@ -1059,6 +1338,20 @@
   }
 
   let steps = 0, lastDate = '', lifetimeSteps = 0;
+  // 동물 데이터
+  const PET_TYPES = [
+    { id: 'dog', name: '강아지', emoji: '🐕', description: '충실하고 활발한 친구', color: '#fbbf24' },
+    { id: 'cat', name: '고양이', emoji: '🐱', description: '우아하고 독립적인 친구', color: '#f97316' },
+    { id: 'lion', name: '사자', emoji: '🦁', description: '용맹하고 당당한 친구', color: '#eab308' },
+    { id: 'rabbit', name: '토끼', emoji: '🐰', description: '귀엽고 민첩한 친구', color: '#fda4af' },
+    { id: 'bear', name: '곰', emoji: '🐻', description: '힘차고 든든한 친구', color: '#92400e' },
+    { id: 'panda', name: '판다', emoji: '🐼', description: '평화롭고 사랑스러운 친구', color: '#ffffff' },
+    { id: 'fox', name: '여우', emoji: '🦊', description: '영리하고 교활한 친구', color: '#f97316' },
+    { id: 'tiger', name: '호랑이', emoji: '🐯', description: '강인하고 용맹한 친구', color: '#fbbf24' }
+  ];
+  
+  let pet = { type: null, level: 1, exp: 0, name: '' }; // 선택한 동물 정보
+  
   let avatar = { name: '산책러', skin: '#f5d0b0', hair: 'short', hairColor: '#4a3728' };
   let inventory = [];
   var storage = [];
@@ -1077,6 +1370,10 @@
   var lastPositionTime = 0;
   var MIN_SEGMENT_KM = 0.005;
   var MAX_SPEED_KMH = 12;
+  var tutorialCompleted = false;
+  var wildAnimals = []; // 현재 주변에 스폰된 야생 동물들
+  var capturedAnimals = []; // 포획한 동물 컬렉션
+  var nearbyAnimalsCheckInterval = null;
   var supplyDateToday = '';
   var supplyCountToday = 0;
   var walkMapEl = null;
@@ -1182,6 +1479,18 @@
       if (tw != null) totalWalkDistanceKm = parseFloat(tw);
     } catch (e) {}
     try {
+      var tc = localStorage.getItem(STORAGE_KEYS.tutorialCompleted);
+      if (tc === 'true') tutorialCompleted = true;
+    } catch (e) {}
+    try {
+      var wa = localStorage.getItem(STORAGE_KEYS.wildAnimals);
+      if (wa) wildAnimals = JSON.parse(wa);
+    } catch (e) {}
+    try {
+      var ca = localStorage.getItem(STORAGE_KEYS.capturedAnimals);
+      if (ca) capturedAnimals = JSON.parse(ca);
+    } catch (e) {}
+    try {
       var ct = localStorage.getItem(STORAGE_KEYS.currentTitle);
       if (ct) currentTitleId = ct;
     } catch (e) {}
@@ -1212,6 +1521,10 @@
       if (ad) lastAttendanceDate = ad;
       if (as != null) attendanceStreak = parseInt(as, 10) || 0;
     } catch (e) {}
+    try {
+      var p = localStorage.getItem(STORAGE_KEYS.pet);
+      if (p) pet = { ...pet, ...JSON.parse(p) };
+    } catch (e) {}
     var th = localStorage.getItem(STORAGE_KEYS.theme);
     if (th === 'morning' || th === 'night') document.body.setAttribute('data-theme', th);
     lastDate = todayStr();
@@ -1222,6 +1535,9 @@
       localStorage.setItem(STORAGE_KEYS.steps, String(steps));
       localStorage.setItem(STORAGE_KEYS.date, todayStr());
       localStorage.setItem(STORAGE_KEYS.lifetime, String(lifetimeSteps));
+      localStorage.setItem(STORAGE_KEYS.tutorialCompleted, tutorialCompleted ? 'true' : 'false');
+      localStorage.setItem(STORAGE_KEYS.wildAnimals, JSON.stringify(wildAnimals));
+      localStorage.setItem(STORAGE_KEYS.capturedAnimals, JSON.stringify(capturedAnimals));
       localStorage.setItem(STORAGE_KEYS.avatar, JSON.stringify(avatar));
       localStorage.setItem(STORAGE_KEYS.inventory, JSON.stringify(inventory));
       localStorage.setItem(STORAGE_KEYS.equipped, JSON.stringify(equipped));
@@ -1235,12 +1551,16 @@
       localStorage.setItem(STORAGE_KEYS.gold, String(gold));
       localStorage.setItem(STORAGE_KEYS.totalWalkKm, String(totalWalkDistanceKm));
       localStorage.setItem(STORAGE_KEYS.currentTitle, currentTitleId);
+      localStorage.setItem(STORAGE_KEYS.tutorialCompleted, tutorialCompleted ? 'true' : 'false');
+      localStorage.setItem(STORAGE_KEYS.wildAnimals, JSON.stringify(wildAnimals));
+      localStorage.setItem(STORAGE_KEYS.capturedAnimals, JSON.stringify(capturedAnimals));
       localStorage.setItem(STORAGE_KEYS.questDate, todayStr());
       localStorage.setItem(STORAGE_KEYS.questProgress, String(questGachaCount));
       localStorage.setItem('walk_quest_claimed', JSON.stringify(questClaimed));
       if (sharedToday) localStorage.setItem(STORAGE_KEYS.sharedDate, todayStr());
       localStorage.setItem(STORAGE_KEYS.attendanceDate, lastAttendanceDate);
       localStorage.setItem(STORAGE_KEYS.attendanceStreak, String(attendanceStreak));
+      localStorage.setItem(STORAGE_KEYS.pet, JSON.stringify(pet));
     } catch (e) {}
     if (isLoggedIn && getAuthToken()) syncGameStateToServer();
   }
@@ -1250,6 +1570,7 @@
       date: todayStr(),
       lifetimeSteps: lifetimeSteps,
       avatar: avatar,
+      pet: pet,
       inventory: inventory,
       equipped: equipped,
       storage: storage,
@@ -1276,6 +1597,7 @@
     if (obj.date != null) lastDate = obj.date;
     if (obj.lifetimeSteps != null) lifetimeSteps = obj.lifetimeSteps;
     if (obj.avatar && typeof obj.avatar === 'object') avatar = { ...avatar, ...obj.avatar };
+    if (obj.pet && typeof obj.pet === 'object') pet = { ...pet, ...obj.pet };
     if (Array.isArray(obj.inventory)) inventory = obj.inventory;
     if (obj.equipped && typeof obj.equipped === 'object') { Object.keys(obj.equipped).forEach(function (k) { if (obj.equipped[k] != null) equipped[k] = obj.equipped[k]; }); }
     if (Array.isArray(obj.storage)) storage = obj.storage;
@@ -1293,6 +1615,10 @@
     if (obj.sharedDate != null) sharedToday = obj.sharedDate === todayStr();
     if (obj.lastAttendanceDate != null) lastAttendanceDate = obj.lastAttendanceDate;
     if (obj.attendanceStreak != null) attendanceStreak = obj.attendanceStreak;
+    if (obj.pet && typeof obj.pet === 'object') {
+      pet = { ...pet, ...obj.pet };
+      renderPet();
+    }
   }
   function syncGameStateToServer() {
     var token = getAuthToken();
@@ -1327,6 +1653,7 @@
           try {
             var data = typeof body.data === 'string' ? JSON.parse(body.data) : body.data;
             applyGameState(data);
+            renderPet();
           } catch (e) {}
         }
       })
@@ -1336,6 +1663,10 @@
   function addStep() {
     steps++;
     lifetimeSteps++;
+    // 동물 경험치 획득 (10걸음당 1 경험치)
+    if (steps % 10 === 0 && pet.type) {
+      addPetExp(1);
+    }
     saveAll();
     renderSteps();
     checkRouteRewards();
@@ -1509,7 +1840,126 @@
       pathCoords.push({ lat: lat, lon: lon });
       lastPositionTime = nowMs;
     }
+    // 야생 동물 스폰 체크 (50m마다)
+    checkWildAnimalSpawn(lat, lon);
     renderWalk();
+  }
+  
+  function checkWildAnimalSpawn(lat, lon) {
+    // 기존 동물과 너무 가까우면 스킵
+    var tooClose = wildAnimals.some(function(animal) {
+      return haversineKm(animal.lat, animal.lon, lat, lon) < 0.05; // 50m 이내
+    });
+    if (tooClose) return;
+    
+    // 랜덤 스폰 (5% 확률)
+    if (Math.random() > 0.05) return;
+    
+    // 희귀도에 따라 동물 선택
+    var rarityRoll = Math.random() * 100;
+    var targetRarity = 'common';
+    if (rarityRoll < 3) targetRarity = 'legend';
+    else if (rarityRoll < 15) targetRarity = 'epic';
+    else if (rarityRoll < 40) targetRarity = 'rare';
+    
+    var availableAnimals = WILD_ANIMALS.filter(function(a) { return a.rarity === targetRarity; });
+    if (availableAnimals.length === 0) return;
+    
+    var animal = availableAnimals[Math.floor(Math.random() * availableAnimals.length)];
+    var spawnAnimal = {
+      id: 'wild_' + Date.now() + '_' + Math.random().toString(36).substr(2, 9),
+      animalId: animal.id,
+      name: animal.name,
+      emoji: animal.emoji,
+      rarity: animal.rarity,
+      description: animal.description,
+      lat: lat,
+      lon: lon,
+      spawnTime: Date.now(),
+      expiresAt: Date.now() + (5 * 60 * 1000) // 5분 후 사라짐
+    };
+    
+    wildAnimals.push(spawnAnimal);
+    saveAll();
+    showWildAnimalNearby(spawnAnimal);
+  }
+  
+  function showWildAnimalNearby(animal) {
+    var rarityLabel = { common: '커먼', rare: '레어', epic: '에픽', legend: '레전드' }[animal.rarity];
+    var rarityColor = { 
+      common: 'var(--rarity-common)', 
+      rare: 'var(--rarity-rare)', 
+      epic: 'var(--rarity-epic)', 
+      legend: 'var(--rarity-legend)' 
+    }[animal.rarity];
+    
+    showToast(animal.emoji + ' ' + animal.name + ' (' + rarityLabel + ') 주변에 나타났어요!', 5000);
+    
+    // 동물 포획 알림 표시
+    var notification = document.createElement('div');
+    notification.className = 'wild-animal-notification';
+    notification.style.cssText = 'position: fixed; top: 80px; left: 50%; transform: translateX(-50%); background: var(--card); border: 2px solid ' + rarityColor + '; border-radius: var(--radius-lg); padding: 1rem; z-index: 250; box-shadow: var(--shadow-glow); animation: slideDown 0.3s ease; max-width: 90%;';
+    notification.innerHTML = '<div style="text-align: center;"><div style="font-size: 3rem; margin-bottom: 0.5rem;">' + animal.emoji + '</div><div style="font-weight: 600; color: ' + rarityColor + '; margin-bottom: 0.25rem;">' + animal.name + '</div><div style="font-size: 0.85rem; color: var(--text-muted); margin-bottom: 0.75rem;">' + rarityLabel + ' · ' + animal.description + '</div><button type="button" class="btn-capture-animal" data-animal-id="' + animal.id + '" style="background: ' + rarityColor + '; color: var(--bg); border: none; border-radius: var(--radius); padding: 0.75rem 1.5rem; font-weight: 600; cursor: pointer; width: 100%;">포획하기</button></div>';
+    
+    document.body.appendChild(notification);
+    
+    var captureBtn = notification.querySelector('.btn-capture-animal');
+    captureBtn.addEventListener('click', function() {
+      captureWildAnimal(animal.id);
+      document.body.removeChild(notification);
+    });
+    
+    // 5초 후 자동 제거
+    setTimeout(function() {
+      if (notification.parentNode) {
+        notification.style.animation = 'slideUp 0.3s ease';
+        setTimeout(function() {
+          if (notification.parentNode) document.body.removeChild(notification);
+        }, 300);
+      }
+    }, 5000);
+  }
+  
+  function captureWildAnimal(animalId) {
+    var animal = wildAnimals.find(function(a) { return a.id === animalId; });
+    if (!animal) {
+      showToast('동물을 찾을 수 없어요.');
+      return;
+    }
+    
+    // 포획 확률 (희귀도에 따라)
+    var captureRate = { common: 0.9, rare: 0.7, epic: 0.5, legend: 0.3 }[animal.rarity];
+    if (Math.random() > captureRate) {
+      showToast('포획에 실패했어요. 동물이 도망갔어요!');
+      wildAnimals = wildAnimals.filter(function(a) { return a.id !== animalId; });
+      saveAll();
+      return;
+    }
+    
+    // 포획 성공
+    var captured = {
+      id: 'captured_' + Date.now() + '_' + Math.random().toString(36).substr(2, 9),
+      animalId: animal.animalId,
+      name: animal.name,
+      emoji: animal.emoji,
+      rarity: animal.rarity,
+      description: animal.description,
+      capturedAt: Date.now()
+    };
+    
+    capturedAnimals.push(captured);
+    wildAnimals = wildAnimals.filter(function(a) { return a.id !== animalId; });
+    
+    var rarityLabel = { common: '커먼', rare: '레어', epic: '에픽', legend: '레전드' }[animal.rarity];
+    showToast('🎉 ' + animal.emoji + ' ' + animal.name + ' (' + rarityLabel + ') 포획 성공!');
+    
+    // 골드 보상
+    var goldReward = { common: 10, rare: 30, epic: 100, legend: 500 }[animal.rarity];
+    gold += goldReward;
+    showToast('💰 +' + goldReward + 'G 획득!');
+    
+    saveAll();
+    renderAnimalCollection();
   }
 
   function startWalk() {
@@ -1768,11 +2218,11 @@
       initWalkMap();
       setTimeout(function () { initWalkMap(); updateWalkMap(); }, 150);
     }
-    if (tabId === 'avatar') renderAvatar();
+    if (tabId === 'avatar') { renderAvatar(); renderPet(); }
     if (tabId === 'storage') renderStorage();
     if (tabId === 'shop') { renderGold(); }
     if (tabId === 'equipment') { renderEquipped(); renderInventory(); renderEnhanceSelect(); }
-    if (tabId === 'story') { renderStory(); renderAchievements(); }
+    if (tabId === 'story') { renderStory(); renderAchievements(); renderAnimalCollection(); }
   }
   function doGachaPull(premium) {
     var cost = premium ? GACHA_PREMIUM_COST : GACHA_COST;
@@ -1907,9 +2357,9 @@
   }
   function doShare() {
     var url = location.href;
-    var text = '산책 성장기 - 걸음으로 성장하는 나만의 이야기';
+    var text = 'WalkStory - 걸음으로 키우는 나만의 동물 친구';
     if (navigator.share) {
-      navigator.share({ title: '산책 성장기', text: text, url: url }).then(function() {
+      navigator.share({ title: 'WalkStory', text: text, url: url }).then(function() {
         onShareSuccess();
       }).catch(function() { onShareSuccess(); });
     } else {
@@ -1929,15 +2379,22 @@
   }
   function renderHeaderAuth() {
     var btn = document.getElementById('btnHeaderAuth');
+    var logoutBtn = document.getElementById('btnLogout');
     if (!btn) return;
-    if (isLoggedIn && userProfile) {
+    if (isLoggedIn && userProfile && userProfile.nickname) {
       btn.textContent = userProfile.nickname;
       btn.classList.add('logged-in');
-      btn.setAttribute('aria-label', '로그아웃');
+      btn.setAttribute('aria-label', '프로필');
+      if (logoutBtn) {
+        logoutBtn.style.display = 'block';
+      }
     } else {
       btn.textContent = '🔐 로그인';
       btn.classList.remove('logged-in');
       btn.setAttribute('aria-label', '로그인');
+      if (logoutBtn) {
+        logoutBtn.style.display = 'none';
+      }
     }
     renderAuthGate();
   }
@@ -1965,20 +2422,174 @@
   }
   function closeAuthModal() {
     var overlay = document.getElementById('authOverlay');
-    if (overlay && isLoggedIn) overlay.style.display = 'none';
-    if (overlay && !isLoggedIn) { overlay.style.display = 'flex'; overlay.classList.add('auth-gate'); }
+    if (overlay && isLoggedIn) {
+      // 페이드아웃 애니메이션
+      overlay.classList.add('fade-out');
+      setTimeout(function() {
+        overlay.style.display = 'none';
+        overlay.classList.remove('fade-out');
+      }, 300);
+    }
+    if (overlay && !isLoggedIn) { 
+      overlay.style.display = 'flex'; 
+      overlay.classList.add('auth-gate'); 
+    }
+  }
+  
+  function showWelcomeModal(nickname) {
+    var modal = document.getElementById('welcomeModal');
+    var title = document.getElementById('welcomeTitle');
+    var message = document.getElementById('welcomeMessage');
+    if (modal && title && message) {
+      title.textContent = nickname ? nickname + '님 환영합니다!' : '환영합니다!';
+      message.textContent = 'WalkStory와 함께 걸어요!';
+      modal.classList.add('show');
+    }
+  }
+  
+  function hideWelcomeModal() {
+    var modal = document.getElementById('welcomeModal');
+    if (modal) {
+      modal.classList.remove('show');
+    }
+    // 튜토리얼이 완료되지 않았으면 표시
+    if (!tutorialCompleted && isLoggedIn) {
+      setTimeout(function() {
+        showTutorial();
+      }, 500);
+    }
+  }
+  
+  var tutorialSteps = [
+    { icon: '👋', title: 'WalkStory에 오신 것을 환영합니다!', text: '걸음으로 키우는 나만의 동물 친구와 함께 산책을 즐겨보세요.' },
+    { icon: '🚶', title: '산책 시작하기', text: '산책 탭에서 코스를 선택하고 "산책 시작" 버튼을 눌러보세요. GPS로 이동 거리가 자동으로 기록됩니다.' },
+    { icon: '🦋', title: '야생 동물 포획하기', text: '산책 중 주변에 나타나는 동물을 발견하면 포획할 수 있어요! 희귀한 동물일수록 골드 보상이 큽니다.' },
+    { icon: '📦', title: '보급 키트 받기', text: '코스를 완주하면 보급 키트를 받을 수 있어요. 장비를 뽑아 캐릭터를 강화하세요!' },
+    { icon: '🎯', title: '퀘스트 완료하기', text: '매일 새로운 퀘스트가 주어집니다. 완료하면 골드를 받을 수 있어요.' },
+    { icon: '🏆', title: '업적 달성하기', text: '다양한 업적을 달성하고 스토리 탭에서 컬렉션을 확인해보세요!' }
+  ];
+  var currentTutorialStep = 0;
+  
+  function showTutorial() {
+    var modal = document.getElementById('tutorialModal');
+    if (!modal) return;
+    currentTutorialStep = 0;
+    updateTutorialSlide();
+    modal.style.display = 'flex';
+  }
+  
+  function hideTutorial() {
+    var modal = document.getElementById('tutorialModal');
+    if (modal) modal.style.display = 'none';
+    tutorialCompleted = true;
+    saveAll();
+  }
+  
+  function updateTutorialSlide() {
+    var slide = tutorialSteps[currentTutorialStep];
+    if (!slide) {
+      hideTutorial();
+      return;
+    }
+    
+    var iconEl = document.getElementById('tutorialIcon');
+    var titleEl = document.getElementById('tutorialTitle');
+    var textEl = document.getElementById('tutorialText');
+    var progressEl = document.getElementById('tutorialProgress');
+    var prevBtn = document.getElementById('btnTutorialPrev');
+    var nextBtn = document.getElementById('btnTutorialNext');
+    
+    if (iconEl) iconEl.textContent = slide.icon;
+    if (titleEl) titleEl.textContent = slide.title;
+    if (textEl) textEl.textContent = slide.text;
+    if (progressEl) progressEl.textContent = (currentTutorialStep + 1) + ' / ' + tutorialSteps.length;
+    if (prevBtn) prevBtn.style.display = currentTutorialStep === 0 ? 'none' : 'block';
+    if (nextBtn) nextBtn.textContent = currentTutorialStep === tutorialSteps.length - 1 ? '시작하기' : '다음';
+  }
+  
+  function nextTutorialStep() {
+    if (currentTutorialStep < tutorialSteps.length - 1) {
+      currentTutorialStep++;
+      updateTutorialSlide();
+    } else {
+      hideTutorial();
+    }
+  }
+  
+  function prevTutorialStep() {
+    if (currentTutorialStep > 0) {
+      currentTutorialStep--;
+      updateTutorialSlide();
+    }
+  }
+  
+  // 야생 동물 만료 체크
+  function checkExpiredWildAnimals() {
+    var now = Date.now();
+    wildAnimals = wildAnimals.filter(function(animal) {
+      return animal.expiresAt > now;
+    });
+    saveAll();
+  }
+  
+  function showAuthLoading() {
+    var loading = document.getElementById('authLoading');
+    var overlay = document.getElementById('authOverlay');
+    if (loading) loading.classList.add('active');
+    if (overlay) overlay.style.display = 'flex';
+  }
+  
+  function hideAuthLoading() {
+    var loading = document.getElementById('authLoading');
+    if (loading) loading.classList.remove('active');
   }
   function doLogin() {
     var nick = (document.getElementById('authLoginNick') || {}).value.trim();
     var pw = (document.getElementById('authLoginPw') || {}).value;
     if (!nick || !pw) { showToast('닉네임과 비밀번호를 입력해 주세요.'); return; }
-    fetch(API_BASE + '/api/auth/login', {
+    var url = API_BASE + '/api/auth/login';
+    console.log('Login attempt:', { url: url, API_BASE: API_BASE, location: typeof location !== 'undefined' ? location.href : 'N/A', isCapacitorApp: typeof window !== 'undefined' && window.isCapacitorApp });
+    
+    // 모바일 앱에서 네트워크 요청 시 타임아웃 설정
+    var fetchOptions = {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ nickname: nick, password: pw })
-    }).then(function (r) { return r.json().then(function (j) { return { ok: r.ok, body: j }; }); })
+      body: JSON.stringify({ nickname: nick, password: pw }),
+      mode: 'cors',
+      credentials: 'omit'
+    };
+    
+    // 타임아웃 추가 (30초)
+    var timeoutPromise = new Promise(function(_, reject) {
+      setTimeout(function() {
+        reject(new Error('요청 시간 초과 (30초)'));
+      }, 30000);
+    });
+    
+    Promise.race([
+      fetch(url, fetchOptions),
+      timeoutPromise
+    ]).then(function (r) {
+      console.log('Login response status:', r.status, 'URL:', r.url);
+      if (!r.ok) {
+        return r.text().then(function (text) {
+          console.error('Login error response:', text);
+          try { return { ok: false, body: JSON.parse(text) }; }
+          catch { return { ok: false, body: { error: 'HTTP ' + r.status + ': ' + text.substring(0, 50) } }; }
+        });
+      }
+      return r.json().then(function (j) { 
+        console.log('Login success:', { userId: j.user?.id, nickname: j.user?.nickname });
+        return { ok: true, body: j }; 
+      });
+    })
       .then(function (x) {
-        if (!x.ok) { showToast(x.body.error || '로그인에 실패했어요.'); return; }
+        if (!x || !x.ok) { 
+          var errorMsg = x && x.body && x.body.error ? x.body.error : '로그인에 실패했어요.';
+          console.error('Login failed:', x);
+          showToast(errorMsg);
+          return; 
+        }
         setAuthToken(x.body.token);
         userProfile = x.body.user;
         isLoggedIn = true;
@@ -1986,6 +2597,10 @@
       })
       .then(function (r) {
         if (!r) return;
+        if (!r.ok) {
+          console.warn('User data fetch failed:', r.status);
+          return null;
+        }
         return r.json();
       })
       .then(function (body) {
@@ -1993,51 +2608,545 @@
           try {
             var data = typeof body.data === 'string' ? JSON.parse(body.data) : body.data;
             applyGameState(data);
-          } catch (e) {}
+            renderPet();
+          } catch (e) {
+            console.error('Failed to parse user data:', e);
+          }
         }
         saveAll();
         closeAuthModal();
-        renderHeaderAuth();
-        renderAttendance();
-        var card = document.getElementById('attendanceCard');
-        if (card) card.style.display = 'block';
-        showToast(userProfile.nickname + '님 환영해요!');
+        setTimeout(function() {
+          renderHeaderAuth();
+          renderAuthGate();
+          renderPet();
+          renderAttendance();
+          var card = document.getElementById('attendanceCard');
+          if (card) card.style.display = 'block';
+          if (userProfile && userProfile.nickname) {
+            showWelcomeModal(userProfile.nickname);
+          } else {
+            showWelcomeModal();
+          }
+        }, 300);
       })
-      .catch(function () { showToast('서버에 연결할 수 없어요.'); });
+      .catch(function (err) {
+        console.error('Login error:', err);
+        console.error('Error details:', { 
+          message: err.message, 
+          name: err.name, 
+          stack: err.stack,
+          url: url, 
+          API_BASE: API_BASE,
+          location: typeof location !== 'undefined' ? location.href : 'N/A',
+          isCapacitorApp: typeof window !== 'undefined' && window.isCapacitorApp,
+          online: navigator.onLine,
+          userAgent: navigator.userAgent
+        });
+        var errorMsg = '서버에 연결할 수 없어요.';
+        if (err.message && err.message.includes('Failed to fetch')) {
+          // 모바일 앱에서 네트워크 오류인 경우 더 자세한 정보 제공
+          if (typeof window !== 'undefined' && window.isCapacitorApp) {
+            errorMsg = '모바일 앱 네트워크 오류: ' + API_BASE + '에 연결할 수 없어요. 인터넷 연결을 확인해 주세요.';
+          } else {
+            errorMsg = '네트워크 연결을 확인해 주세요. (API: ' + API_BASE + ')';
+          }
+        } else if (err.message && err.message.includes('요청 시간 초과')) {
+          errorMsg = '서버 응답 시간이 초과되었어요. 다시 시도해 주세요.';
+        } else if (err.message) {
+          errorMsg = '오류: ' + err.message;
+        }
+        showToast(errorMsg);
+      });
   }
   function doSignup() {
     var nick = (document.getElementById('authSignupNick') || {}).value.trim();
+    var email = (document.getElementById('authSignupEmail') || {}).value.trim();
     var pw = (document.getElementById('authSignupPw') || {}).value;
     var pw2 = (document.getElementById('authSignupPw2') || {}).value;
     if (!nick || nick.length < 2) { showToast('닉네임은 2자 이상이에요.'); return; }
+    if (!email || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) { showToast('올바른 이메일을 입력해 주세요.'); return; }
     if (!pw || pw.length < 6) { showToast('비밀번호는 6자 이상이에요.'); return; }
     if (pw !== pw2) { showToast('비밀번호가 일치하지 않아요.'); return; }
-    fetch(API_BASE + '/api/auth/signup', {
+    var url = API_BASE + '/api/auth/signup';
+    console.log('Signup attempt:', { url: url, API_BASE: API_BASE });
+    fetch(url, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ nickname: nick, password: pw })
-    }).then(function (r) { return r.json().then(function (j) { return { ok: r.ok, body: j }; }); })
+      body: JSON.stringify({ nickname: nick, password: pw, email: email })
+    }).then(function (r) {
+      console.log('Signup response status:', r.status);
+      if (!r.ok) {
+        return r.text().then(function (text) {
+          console.error('Signup error response:', text);
+          try { return { ok: false, body: JSON.parse(text) }; }
+          catch { return { ok: false, body: { error: 'HTTP ' + r.status + ': ' + text.substring(0, 50) } }; }
+        });
+      }
+      return r.json().then(function (j) { 
+        console.log('Signup success:', { userId: j.user?.id, nickname: j.user?.nickname });
+        return { ok: true, body: j }; 
+      });
+    })
       .then(function (x) {
-        if (!x.ok) { showToast(x.body.error || '가입에 실패했어요.'); return; }
+        if (!x || !x.ok) { 
+          var errorMsg = x && x.body && x.body.error ? x.body.error : '가입에 실패했어요.';
+          console.error('Signup failed:', x);
+          showToast(errorMsg);
+          return; 
+        }
         setAuthToken(x.body.token);
         userProfile = x.body.user;
         isLoggedIn = true;
         saveAll();
         closeAuthModal();
+        setTimeout(function() {
+          renderHeaderAuth();
+          renderAuthGate();
+          renderPet();
+          renderAttendance();
+          var card = document.getElementById('attendanceCard');
+          if (card) card.style.display = 'block';
+          if (userProfile && userProfile.nickname) {
+            showWelcomeModal(userProfile.nickname);
+          } else {
+            showWelcomeModal();
+          }
+        }, 300);
+      })
+      .catch(function (err) {
+        console.error('Signup error:', err);
+        console.error('Error details:', { 
+          message: err.message, 
+          name: err.name, 
+          stack: err.stack,
+          url: url, 
+          API_BASE: API_BASE,
+          location: typeof location !== 'undefined' ? location.href : 'N/A',
+          isCapacitorApp: typeof window !== 'undefined' && window.isCapacitorApp,
+          online: navigator.onLine,
+          userAgent: navigator.userAgent
+        });
+        var errorMsg = '서버에 연결할 수 없어요.';
+        if (err.message && err.message.includes('Failed to fetch')) {
+          // 모바일 앱에서 네트워크 오류인 경우 더 자세한 정보 제공
+          if (typeof window !== 'undefined' && window.isCapacitorApp) {
+            errorMsg = '모바일 앱 네트워크 오류: ' + API_BASE + '에 연결할 수 없어요. 인터넷 연결을 확인해 주세요.';
+          } else {
+            errorMsg = '네트워크 연결을 확인해 주세요. (API: ' + API_BASE + ')';
+          }
+        } else if (err.message && err.message.includes('요청 시간 초과')) {
+          errorMsg = '서버 응답 시간이 초과되었어요. 다시 시도해 주세요.';
+        } else if (err.message) {
+          errorMsg = '오류: ' + err.message;
+        }
+        showToast(errorMsg);
+      });
+  }
+  function doFindId() {
+    var email = (document.getElementById('authFindIdEmail') || {}).value.trim();
+    if (!email || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
+      showToast('올바른 이메일을 입력해 주세요.'); return;
+    }
+    var url = API_BASE + '/api/auth/find-id';
+    fetch(url, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ email: email })
+    }).then(function (r) {
+      if (!r.ok) {
+        return r.text().then(function (text) {
+          try { return { ok: false, body: JSON.parse(text) }; }
+          catch { return { ok: false, body: { error: 'HTTP ' + r.status + ': ' + text.substring(0, 50) } }; }
+        });
+      }
+      return r.json().then(function (j) { return { ok: true, body: j }; });
+    }).then(function (x) {
+      var resultDiv = document.getElementById('findIdResult');
+      if (!x.ok) {
+        if (resultDiv) {
+          resultDiv.style.display = 'block';
+          resultDiv.innerHTML = '<div style="color: #ef4444;">' + (x.body.error || '아이디 찾기에 실패했어요.') + '</div>';
+        } else {
+          showToast(x.body.error || '아이디 찾기에 실패했어요.');
+        }
+        return;
+      }
+      if (resultDiv) {
+        resultDiv.style.display = 'block';
+        resultDiv.innerHTML = '<div style="color: var(--accent);">닉네임: <strong>' + x.body.fullNickname + '</strong></div>';
+      }
+    }).catch(function (err) {
+      console.error('Find ID error:', err);
+      showToast('서버에 연결할 수 없어요.');
+    });
+  }
+  function doFindPw() {
+    var email = (document.getElementById('authFindPwEmail') || {}).value.trim();
+    if (!email || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
+      showToast('올바른 이메일을 입력해 주세요.'); return;
+    }
+    var url = API_BASE + '/api/auth/reset-password-request';
+    fetch(url, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ email: email })
+    }).then(function (r) {
+      if (!r.ok) {
+        return r.text().then(function (text) {
+          try { return { ok: false, body: JSON.parse(text) }; }
+          catch { return { ok: false, body: { error: 'HTTP ' + r.status + ': ' + text.substring(0, 50) } }; }
+        });
+      }
+      return r.json().then(function (j) { return { ok: true, body: j }; });
+    }).then(function (x) {
+      var resultDiv = document.getElementById('findPwResult');
+      var resetPanel = document.getElementById('authResetPwPanel');
+      if (!x.ok) {
+        if (resultDiv) {
+          resultDiv.style.display = 'block';
+          resultDiv.innerHTML = '<div style="color: #ef4444;">' + (x.body.error || '비밀번호 재설정 요청에 실패했어요.') + '</div>';
+        } else {
+          showToast(x.body.error || '비밀번호 재설정 요청에 실패했어요.');
+        }
+        return;
+      }
+      if (resultDiv) {
+        resultDiv.style.display = 'block';
+        var msg = x.body.message || '비밀번호 재설정 링크를 발송했어요.';
+        if (x.body.resetToken) {
+          msg += '<br><small style="color: var(--text-muted); margin-top: 0.5rem; display: block;">개발 모드: 토큰 = ' + x.body.resetToken + '</small>';
+        }
+        resultDiv.innerHTML = '<div style="color: var(--accent);">' + msg + '</div>';
+      }
+      if (resetPanel && x.body.resetToken) {
+        resetPanel.style.display = 'block';
+        document.getElementById('authResetToken').value = x.body.resetToken;
+      }
+    }).catch(function (err) {
+      console.error('Find PW error:', err);
+      showToast('서버에 연결할 수 없어요.');
+    });
+  }
+  function doResetPw() {
+    var token = (document.getElementById('authResetToken') || {}).value.trim();
+    var pw = (document.getElementById('authResetPw') || {}).value;
+    var pw2 = (document.getElementById('authResetPw2') || {}).value;
+    if (!token) { showToast('토큰을 입력해 주세요.'); return; }
+    if (!pw || pw.length < 6) { showToast('비밀번호는 6자 이상이에요.'); return; }
+    if (pw !== pw2) { showToast('비밀번호가 일치하지 않아요.'); return; }
+    var url = API_BASE + '/api/auth/reset-password';
+    fetch(url, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ token: token, newPassword: pw })
+    }).then(function (r) {
+      if (!r.ok) {
+        return r.text().then(function (text) {
+          try { return { ok: false, body: JSON.parse(text) }; }
+          catch { return { ok: false, body: { error: 'HTTP ' + r.status + ': ' + text.substring(0, 50) } }; }
+        });
+      }
+      return r.json().then(function (j) { return { ok: true, body: j }; });
+    }).then(function (x) {
+      if (!x.ok) {
+        showToast(x.body.error || '비밀번호 재설정에 실패했어요.');
+        return;
+      }
+      showToast('비밀번호가 재설정되었어요. 로그인해 주세요.');
+      switchAuthTab('login');
+    }).catch(function (err) {
+      console.error('Reset PW error:', err);
+      showToast('서버에 연결할 수 없어요.');
+    });
+  }
+  function doSocialLogin(provider) {
+    // 카카오/구글 OAuth는 프론트엔드에서 처리하고, 백엔드에 사용자 정보 전송
+    if (provider === 'kakao') {
+      // 카카오 로그인 (Kakao SDK 필요)
+      if (typeof Kakao === 'undefined') {
+        showToast('카카오 SDK가 로드되지 않았어요. 카카오 개발자 앱 설정이 필요해요.');
+        return;
+      }
+      // 로딩 표시
+      showAuthLoading();
+      Kakao.Auth.login({
+        // 닉네임만 요청 (이메일은 권한 없음 상태이므로 제외)
+        scope: 'profile_nickname',
+        success: function(authObj) {
+          Kakao.API.request({
+            url: '/v2/user/me',
+            success: function(res) {
+              console.log('Kakao API response:', res);
+              console.log('Kakao account:', res.kakao_account);
+              console.log('Properties:', res.properties);
+              try {
+                var socialId = res.id ? res.id.toString() : null;
+                if (!socialId) {
+                  showToast('카카오 사용자 정보를 가져올 수 없어요.');
+                  return;
+                }
+                
+                // 닉네임 추출 (안전하게 - 여러 경로 확인)
+                var nickname = '카카오사용자' + Math.floor(Math.random() * 1000); // 기본값에 랜덤 숫자 추가
+                if (res.kakao_account) {
+                  if (res.kakao_account.profile && res.kakao_account.profile.nickname) {
+                    nickname = res.kakao_account.profile.nickname;
+                  } else if (res.kakao_account.profile_nickname) {
+                    nickname = res.kakao_account.profile_nickname;
+                  }
+                }
+                if (res.properties) {
+                  if (res.properties.nickname) {
+                    nickname = res.properties.nickname;
+                  }
+                }
+                
+                // 이메일은 권한 없음이므로 null로 설정
+                var email = null;
+                
+                console.log('Extracted nickname:', nickname, 'socialId:', socialId);
+                sendSocialLogin(provider, socialId, nickname, email);
+              } catch (err) {
+                console.error('Kakao API response processing error:', err);
+                showToast('카카오 사용자 정보 처리 중 오류가 났어요.');
+              }
+            },
+            fail: function(err) {
+              console.error('Kakao API error:', err);
+              hideAuthLoading();
+              showToast('카카오 사용자 정보를 가져올 수 없어요: ' + (err.error_description || err.error || '알 수 없는 오류'));
+            }
+          });
+        },
+        fail: function(err) {
+          console.error('Kakao Auth error:', err);
+          hideAuthLoading();
+          showToast('카카오 로그인에 실패했어요: ' + (err.error_description || err.error || '알 수 없는 오류'));
+        }
+      });
+    } else if (provider === 'google') {
+      // 구글 로그인 (Google Sign-In API 필요)
+      if (typeof gapi === 'undefined') {
+        showToast('구글 SDK가 로드되지 않았어요. Google OAuth 설정이 필요해요.');
+        return;
+      }
+      var googleClientId = (typeof window !== 'undefined' && window.APP_CONFIG && window.APP_CONFIG.google) 
+        ? window.APP_CONFIG.google.clientId 
+        : 'YOUR_GOOGLE_CLIENT_ID';
+      if (googleClientId === 'YOUR_GOOGLE_CLIENT_ID') {
+        showToast('구글 클라이언트 ID가 설정되지 않았어요.');
+        return;
+      }
+      gapi.load('auth2', function() {
+        gapi.auth2.init({
+          client_id: googleClientId
+        }).then(function() {
+          var authInstance = gapi.auth2.getAuthInstance();
+          authInstance.signIn().then(function(googleUser) {
+            var profile = googleUser.getBasicProfile();
+            var socialId = profile.getId();
+            var nickname = profile.getName() || '구글사용자';
+            var email = profile.getEmail() || null;
+            sendSocialLogin(provider, socialId, nickname, email);
+          }).catch(function(err) {
+            console.error('Google Sign-In error:', err);
+            showToast('구글 로그인에 실패했어요.');
+          });
+        });
+      });
+    }
+  }
+  function sendSocialLogin(provider, socialId, nickname, email) {
+    console.log('sendSocialLogin called:', { provider, socialId: socialId?.substring(0, 10) + '...', nickname: nickname?.substring(0, 20), email: email ? 'provided' : 'null' });
+    var url = API_BASE + '/api/auth/social';
+    fetch(url, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ provider: provider, socialId: socialId, nickname: nickname, email: email })
+    }).then(function (r) {
+      console.log('Social login response status:', r.status);
+      if (!r.ok) {
+        return r.text().then(function (text) {
+          console.error('Social login error response:', text);
+          try { 
+            var parsed = JSON.parse(text);
+            console.error('Parsed error:', parsed);
+            return { ok: false, body: parsed, status: r.status }; 
+          }
+          catch { 
+            console.error('Failed to parse error response:', text);
+            return { ok: false, body: { error: 'HTTP ' + r.status + ': ' + text.substring(0, 100) }, status: r.status }; 
+          }
+        });
+      }
+      return r.json().then(function (j) { 
+        console.log('Social login success:', { userId: j.user?.id, nickname: j.user?.nickname });
+        return { ok: true, body: j }; 
+      });
+    }).catch(function(err) {
+      console.error('sendSocialLogin fetch error:', err);
+      return { ok: false, body: { error: '네트워크 오류: ' + err.message } };
+    }).then(function (x) {
+      if (!x || !x.ok) {
+        hideAuthLoading();
+        var errorMsg = x && x.body && x.body.error ? x.body.error : '소셜 로그인에 실패했어요.';
+        if (x && x.body && x.body.details) {
+          console.error('Server error details:', x.body.details);
+        }
+        if (x && x.body && x.body.code) {
+          console.error('Server error code:', x.body.code);
+        }
+        showToast(errorMsg);
+        return null;
+      }
+      if (!x.body || !x.body.user || !x.body.token) {
+        hideAuthLoading();
+        showToast('서버 응답이 올바르지 않아요.');
+        return null;
+      }
+      setAuthToken(x.body.token);
+      userProfile = x.body.user;
+      isLoggedIn = true;
+      
+      // userProfile이 제대로 설정되었는지 확인
+      if (!userProfile || !userProfile.nickname) {
+        hideAuthLoading();
+        console.error('userProfile is invalid:', userProfile);
+        showToast('사용자 정보를 가져오는 중 오류가 났어요.');
+        return null;
+      }
+      
+      hideAuthLoading();
+      return fetch(API_BASE + '/api/user/data', { headers: { 'Authorization': 'Bearer ' + x.body.token } });
+    }).then(function (r) {
+      if (!r) {
+        // 로그인은 성공했지만 데이터 로드는 스킵
+        if (userProfile && userProfile.nickname) {
+          saveAll();
+          closeAuthModal();
+          setTimeout(function() {
+            renderHeaderAuth();
+            renderAuthGate();
+            renderPet();
+            renderAttendance();
+            var card = document.getElementById('attendanceCard');
+            if (card) card.style.display = 'block';
+            showWelcomeModal(userProfile.nickname);
+          }, 300);
+        }
+        return null;
+      }
+      if (!r.ok) {
+        // 데이터 로드 실패해도 로그인은 성공
+        console.warn('Failed to load user data:', r.status);
+        if (userProfile && userProfile.nickname) {
+          saveAll();
+          closeAuthModal();
+          setTimeout(function() {
+            renderHeaderAuth();
+            renderAuthGate();
+            renderPet();
+            renderAttendance();
+            var card = document.getElementById('attendanceCard');
+            if (card) card.style.display = 'block';
+            showWelcomeModal(userProfile.nickname);
+          }, 300);
+        }
+        return null;
+      }
+      return r.json();
+    }).then(function (body) {
+      if (!body) return;
+      if (body && body.data) {
+        try {
+          var data = typeof body.data === 'string' ? JSON.parse(body.data) : body.data;
+          applyGameState(data);
+        } catch (e) {
+          console.error('Failed to apply game state:', e);
+        }
+      }
+      saveAll();
+      closeAuthModal();
+      setTimeout(function() {
         renderHeaderAuth();
+        renderAuthGate();
+        renderPet();
         renderAttendance();
         var card = document.getElementById('attendanceCard');
         if (card) card.style.display = 'block';
-        showToast('가입 완료! ' + userProfile.nickname + '님 환영해요.');
-      })
-      .catch(function () { showToast('서버에 연결할 수 없어요.'); });
+        if (userProfile && userProfile.nickname) {
+          showWelcomeModal(userProfile.nickname);
+        } else {
+          showWelcomeModal();
+        }
+      }, 300);
+    }).catch(function(err) {
+      hideAuthLoading();
+      console.error('User data load error:', err);
+      if (userProfile && userProfile.nickname) {
+        saveAll();
+        closeAuthModal();
+        setTimeout(function() {
+          renderHeaderAuth();
+          renderAuthGate();
+          renderPet();
+          renderAttendance();
+          var card = document.getElementById('attendanceCard');
+          if (card) card.style.display = 'block';
+          showWelcomeModal(userProfile.nickname);
+        }, 300);
+      } else {
+        showToast('로그인 중 오류가 났어요: ' + (err.message || '알 수 없는 오류'));
+      }
+    }).catch(function (err) {
+      hideAuthLoading();
+      console.error('Social login error:', err);
+      // 로그인은 성공했지만 데이터 로드 실패
+      if (userProfile && userProfile.nickname) {
+        saveAll();
+        closeAuthModal();
+        setTimeout(function() {
+          renderHeaderAuth();
+          renderAuthGate();
+          renderPet();
+          renderAttendance();
+          var card = document.getElementById('attendanceCard');
+          if (card) card.style.display = 'block';
+          showWelcomeModal(userProfile.nickname);
+        }, 300);
+      } else {
+        showToast('로그인 중 오류가 났어요: ' + (err.message || '알 수 없는 오류'));
+      }
+    });
+  }
+  function switchAuthTab(tab) {
+    document.getElementById('authLoginPanel').style.display = tab === 'login' ? 'block' : 'none';
+    document.getElementById('authSignupPanel').style.display = tab === 'signup' ? 'block' : 'none';
+    document.getElementById('authFindIdPanel').style.display = tab === 'findId' ? 'block' : 'none';
+    document.getElementById('authFindPwPanel').style.display = tab === 'findPw' ? 'block' : 'none';
+    document.querySelectorAll('.auth-tab').forEach(function(t){ 
+      t.classList.remove('active'); 
+      if (t.getAttribute('data-auth-tab') === tab) t.classList.add('active'); 
+    });
+    document.getElementById('authTitle').textContent = 
+      tab === 'login' ? '로그인' : 
+      tab === 'signup' ? '회원가입' : 
+      tab === 'findId' ? '아이디 찾기' : 
+      tab === 'findPw' ? '비밀번호 찾기' : '로그인';
   }
   function doLogout() {
+    // 카카오 로그인인 경우 카카오 로그아웃도 처리
+    if (typeof Kakao !== 'undefined' && Kakao.Auth.getAccessToken()) {
+      Kakao.Auth.logout(function() {
+        console.log('카카오 로그아웃 완료');
+      });
+    }
     clearAuthToken();
     userProfile = null;
     isLoggedIn = false;
     saveAll();
     renderHeaderAuth();
+    renderAuthGate();
     renderAttendance();
     var card = document.getElementById('attendanceCard');
     if (card) card.style.display = 'none';
@@ -2118,6 +3227,49 @@
     showToast('공유 감사해요! +40 G');
   }
 
+  function renderPet() {
+    var petEmoji = document.getElementById('petEmoji');
+    var petName = document.getElementById('petName');
+    var petLevel = document.getElementById('petLevel');
+    var petExpFill = document.getElementById('petExpFill');
+    var petExpText = document.getElementById('petExpText');
+    
+    if (!pet.type) {
+      if (petEmoji) petEmoji.textContent = '🐾';
+      if (petName) petName.textContent = '동물을 선택해주세요';
+      if (petLevel) petLevel.textContent = '';
+      if (petExpFill) petExpFill.style.width = '0%';
+      if (petExpText) petExpText.textContent = '';
+      return;
+    }
+    
+    var petType = PET_TYPES.find(function(p) { return p.id === pet.type; });
+    if (!petType) return;
+    
+    var expForNextLevel = pet.level * 100; // 레벨당 100 경험치 필요
+    var expPercent = (pet.exp / expForNextLevel) * 100;
+    
+    if (petEmoji) petEmoji.textContent = petType.emoji;
+    if (petName) petName.textContent = pet.name || petType.name;
+    if (petLevel) petLevel.textContent = 'Lv.' + pet.level;
+    if (petExpFill) petExpFill.style.width = Math.min(expPercent, 100) + '%';
+    if (petExpText) petExpText.textContent = '경험치: ' + pet.exp + ' / ' + expForNextLevel;
+  }
+  
+  function addPetExp(amount) {
+    if (!pet.type) return;
+    pet.exp += amount;
+    var expForNextLevel = pet.level * 100;
+    while (pet.exp >= expForNextLevel) {
+      pet.exp -= expForNextLevel;
+      pet.level++;
+      showToast('🎉 ' + (PET_TYPES.find(function(p) { return p.id === pet.type; }) || {}).name + '이(가) 레벨업했어요! Lv.' + pet.level);
+      expForNextLevel = pet.level * 100;
+    }
+    saveAll();
+    renderPet();
+  }
+  
   function renderAvatar() {
     var nameEl = document.getElementById('avatarName');
     var inputEl = document.getElementById('inputAvatarName');
@@ -2356,6 +3508,94 @@
     var sm = document.getElementById('storyMilestone');
     if (st) st.textContent = s.text;
     if (sm) sm.textContent = s.milestone;
+    renderAnimalCollection();
+  }
+  
+  function renderAnimalCollection() {
+    var grid = document.getElementById('animalCollectionGrid');
+    if (!grid) return;
+    grid.innerHTML = '';
+    
+    if (capturedAnimals.length === 0) {
+      grid.innerHTML = '<div style="grid-column: 1 / -1; text-align: center; padding: 2rem; color: var(--text-muted);">아직 포획한 동물이 없어요.<br>산책을 시작하면 주변에 동물이 나타날 거예요!</div>';
+      return;
+    }
+    
+    // 희귀도별로 정렬
+    var rarityOrder = { legend: 0, epic: 1, rare: 2, common: 3 };
+    var sorted = capturedAnimals.slice().sort(function(a, b) {
+      return rarityOrder[a.rarity] - rarityOrder[b.rarity];
+    });
+    
+    sorted.forEach(function(animal) {
+      var rarityColor = { 
+        common: 'var(--rarity-common)', 
+        rare: 'var(--rarity-rare)', 
+        epic: 'var(--rarity-epic)', 
+        legend: 'var(--rarity-legend)' 
+      }[animal.rarity];
+      var rarityLabel = { common: '커먼', rare: '레어', epic: '에픽', legend: '레전드' }[animal.rarity];
+      
+      var card = document.createElement('div');
+      card.style.cssText = 'background: var(--card); border: 2px solid ' + rarityColor + '; border-radius: var(--radius-lg); padding: 1rem; text-align: center; transition: transform 0.2s ease;';
+      card.onmouseover = function() { this.style.transform = 'scale(1.05)'; };
+      card.onmouseout = function() { this.style.transform = 'scale(1)'; };
+      card.innerHTML = '<div style="font-size: 3rem; margin-bottom: 0.5rem;">' + animal.emoji + '</div><div style="font-weight: 600; margin-bottom: 0.25rem;">' + animal.name + '</div><div style="font-size: 0.75rem; color: ' + rarityColor + ';">' + rarityLabel + '</div>';
+      grid.appendChild(card);
+    });
+  }
+  
+  function openPetSelectModal() {
+    var overlay = document.getElementById('petSelectOverlay');
+    var grid = document.getElementById('petGrid');
+    if (!overlay || !grid) return;
+    
+    grid.innerHTML = '';
+    var selectedPetId = pet.type;
+    
+    PET_TYPES.forEach(function(petType) {
+      var item = document.createElement('div');
+      item.className = 'pet-item' + (selectedPetId === petType.id ? ' selected' : '');
+      item.setAttribute('data-pet-id', petType.id);
+      item.innerHTML = '<div class="pet-item-emoji">' + petType.emoji + '</div><div class="pet-item-name">' + petType.name + '</div><div class="pet-item-desc">' + petType.description + '</div>';
+      item.onclick = function() {
+        document.querySelectorAll('.pet-item').forEach(function(el) { el.classList.remove('selected'); });
+        item.classList.add('selected');
+        selectedPetId = petType.id;
+      };
+      grid.appendChild(item);
+    });
+    
+    overlay.style.display = 'flex';
+  }
+  
+  function closePetSelectModal() {
+    var overlay = document.getElementById('petSelectOverlay');
+    if (overlay) overlay.style.display = 'none';
+  }
+  
+  function confirmPetSelection() {
+    var selectedItem = document.querySelector('.pet-item.selected');
+    if (!selectedItem) {
+      showToast('동물을 선택해주세요.');
+      return;
+    }
+    
+    var petTypeId = selectedItem.getAttribute('data-pet-id');
+    if (!petTypeId) return;
+    
+    var petType = PET_TYPES.find(function(p) { return p.id === petTypeId; });
+    if (!petType) return;
+    
+    pet.type = petTypeId;
+    pet.name = petType.name;
+    if (!pet.level) pet.level = 1;
+    if (pet.exp == null) pet.exp = 0;
+    
+    saveAll();
+    renderPet();
+    closePetSelectModal();
+    showToast(petType.name + '을(를) 선택했어요! 함께 걸어 성장해봐요! 🐾');
   }
 
   function attachListeners() {
@@ -2437,16 +3677,23 @@
     if (btnEnhance) btnEnhance.addEventListener('click', tryEnhance);
     var btnHeaderAuth = document.getElementById('btnHeaderAuth');
     if (btnHeaderAuth) btnHeaderAuth.addEventListener('click', function() {
-      if (isLoggedIn) { if (confirm('로그아웃할까요?')) doLogout(); }
-      else openAuthModal();
+      if (isLoggedIn) {
+        // 로그인 상태일 때는 프로필 표시 (또는 아무 동작 안 함)
+        // 로그아웃은 별도 버튼으로 처리
+      } else {
+        openAuthModal();
+      }
+    });
+    var btnLogout = document.getElementById('btnLogout');
+    if (btnLogout) btnLogout.addEventListener('click', function() {
+      if (confirm('로그아웃할까요?')) {
+        doLogout();
+      }
     });
     document.querySelectorAll('.auth-tab').forEach(function(t) {
       t.addEventListener('click', function() {
         var tab = this.getAttribute('data-auth-tab');
-        document.querySelectorAll('.auth-tab').forEach(function(x){ x.classList.toggle('active', x.getAttribute('data-auth-tab') === tab); });
-        document.getElementById('authLoginPanel').style.display = tab === 'login' ? 'block' : 'none';
-        document.getElementById('authSignupPanel').style.display = tab === 'signup' ? 'block' : 'none';
-        document.getElementById('authTitle').textContent = tab === 'login' ? '로그인' : '회원가입';
+        switchAuthTab(tab);
       });
     });
     var authClose = document.getElementById('authClose');
@@ -2457,6 +3704,54 @@
     if (btnAuthLogin) btnAuthLogin.addEventListener('click', doLogin);
     var btnAuthSignup = document.getElementById('btnAuthSignup');
     if (btnAuthSignup) btnAuthSignup.addEventListener('click', doSignup);
+    var btnFindId = document.getElementById('btnFindId');
+    if (btnFindId) btnFindId.addEventListener('click', function() { switchAuthTab('findId'); });
+    var btnFindPw = document.getElementById('btnFindPw');
+    if (btnFindPw) btnFindPw.addEventListener('click', function() { switchAuthTab('findPw'); });
+    var btnFindIdSubmit = document.getElementById('btnFindIdSubmit');
+    if (btnFindIdSubmit) btnFindIdSubmit.addEventListener('click', doFindId);
+    var btnFindPwSubmit = document.getElementById('btnFindPwSubmit');
+    if (btnFindPwSubmit) btnFindPwSubmit.addEventListener('click', doFindPw);
+    var btnResetPwSubmit = document.getElementById('btnResetPwSubmit');
+    if (btnResetPwSubmit) btnResetPwSubmit.addEventListener('click', doResetPw);
+    var btnBackToLogin = document.getElementById('btnBackToLogin');
+    if (btnBackToLogin) btnBackToLogin.addEventListener('click', function() { switchAuthTab('login'); });
+    var btnBackToLogin2 = document.getElementById('btnBackToLogin2');
+    if (btnBackToLogin2) btnBackToLogin2.addEventListener('click', function() { switchAuthTab('login'); });
+    var btnKakaoLogin = document.getElementById('btnKakaoLogin');
+    if (btnKakaoLogin) btnKakaoLogin.addEventListener('click', function() { doSocialLogin('kakao'); });
+    var btnKakaoSignup = document.getElementById('btnKakaoSignup');
+    if (btnKakaoSignup) btnKakaoSignup.addEventListener('click', function() { doSocialLogin('kakao'); });
+    var btnGoogleLogin = document.getElementById('btnGoogleLogin');
+    if (btnGoogleLogin) btnGoogleLogin.addEventListener('click', function() { doSocialLogin('google'); });
+    var btnGoogleSignup = document.getElementById('btnGoogleSignup');
+    if (btnGoogleSignup) btnGoogleSignup.addEventListener('click', function() { doSocialLogin('google'); });
+    var btnWelcomeClose = document.getElementById('btnWelcomeClose');
+    if (btnWelcomeClose) btnWelcomeClose.addEventListener('click', hideWelcomeModal);
+    var welcomeModal = document.getElementById('welcomeModal');
+    if (welcomeModal) welcomeModal.addEventListener('click', function(e) {
+      if (e.target === welcomeModal) hideWelcomeModal();
+    });
+    var btnTutorialNext = document.getElementById('btnTutorialNext');
+    if (btnTutorialNext) btnTutorialNext.addEventListener('click', nextTutorialStep);
+    var btnTutorialPrev = document.getElementById('btnTutorialPrev');
+    if (btnTutorialPrev) btnTutorialPrev.addEventListener('click', prevTutorialStep);
+    var tutorialClose = document.getElementById('tutorialClose');
+    if (tutorialClose) tutorialClose.addEventListener('click', hideTutorial);
+    var tutorialModal = document.getElementById('tutorialModal');
+    if (tutorialModal) tutorialModal.addEventListener('click', function(e) {
+      if (e.target === tutorialModal) hideTutorial();
+    });
+    var btnSelectPet = document.getElementById('btnSelectPet');
+    if (btnSelectPet) btnSelectPet.addEventListener('click', openPetSelectModal);
+    var btnConfirmPet = document.getElementById('btnConfirmPet');
+    if (btnConfirmPet) btnConfirmPet.addEventListener('click', confirmPetSelection);
+    var petSelectClose = document.getElementById('petSelectClose');
+    if (petSelectClose) petSelectClose.addEventListener('click', closePetSelectModal);
+    var petSelectOverlay = document.getElementById('petSelectOverlay');
+    if (petSelectOverlay) petSelectOverlay.addEventListener('click', function(e) {
+      if (e.target === petSelectOverlay) closePetSelectModal();
+    });
     var btnAttendance = document.getElementById('btnAttendance');
     if (btnAttendance) btnAttendance.addEventListener('click', doAttendance);
   }
@@ -2507,6 +3802,7 @@
       renderSteps();
       renderWalk();
       renderAvatar();
+      renderPet();
       renderRoutes();
       renderStorage();
       renderQuests();
@@ -2523,6 +3819,10 @@
       var themeToggle = document.getElementById('themeToggle');
       if (themeToggle && document.body.getAttribute('data-theme') === 'morning') themeToggle.textContent = '☀️';
       initSensorAndStatus();
+      // 만료된 야생 동물 제거
+      checkExpiredWildAnimals();
+      // 30초마다 만료 체크
+      setInterval(checkExpiredWildAnimals, 30000);
     });
   }
 

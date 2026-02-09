@@ -1,7 +1,7 @@
 {
-  "name": "산책 성장기 - 걸음으로 성장하는 나만의 이야기",
-  "short_name": "산책 성장기",
-  "description": "걸음을 걸어 산책로를 열고, 아바타와 장비를 키우는 산책 어플입니다.",
+  "name": "WalkStory - 걸음으로 키우는 나만의 동물 친구",
+  "short_name": "WalkStory",
+  "description": "걸음을 걸어 다양한 동물 친구를 키우고 성장시키는 산책 앱입니다.",
   "start_url": "./",
   "display": "standalone",
   "orientation": "portrait",
@@ -10,10 +10,22 @@
   "lang": "ko",
   "icons": [
     {
-      "src": "icon.svg",
-      "sizes": "any",
-      "type": "image/svg+xml",
+      "src": "./walkstory-logo.png",
+      "sizes": "512x512",
+      "type": "image/png",
       "purpose": "any maskable"
+    },
+    {
+      "src": "./walkstory-logo.png",
+      "sizes": "192x192",
+      "type": "image/png",
+      "purpose": "any"
+    },
+    {
+      "src": "./walkstory-logo.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "maskable"
     }
   ]
 }
