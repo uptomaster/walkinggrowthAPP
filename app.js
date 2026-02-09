@@ -3303,7 +3303,7 @@
       showToast('로그인이 필요해요.');
       return;
     }
-    fetch(API_BASE + '/api/friends/search?nickname=' + encodeURIComponent(query), {
+    fetch(API_BASE + '/api/friends?action=search&nickname=' + encodeURIComponent(query), {
       headers: { 'Authorization': 'Bearer ' + token }
     })
     .then(function(res) { return res.json(); })
@@ -3354,13 +3354,13 @@
       showToast('로그인이 필요해요.');
       return;
     }
-    fetch(API_BASE + '/api/friends/request', {
+    fetch(API_BASE + '/api/friends', {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
         'Authorization': 'Bearer ' + token
       },
-      body: JSON.stringify({ friendId: friendId })
+      body: JSON.stringify({ action: 'request', friendId: friendId })
     })
     .then(function(res) { return res.json(); })
     .then(function(data) {
@@ -3385,7 +3385,7 @@
       if (container) container.innerHTML = '<div class="empty-state">로그인이 필요해요.</div>';
       return;
     }
-    fetch(API_BASE + '/api/friends/list', {
+    fetch(API_BASE + '/api/friends', {
       headers: { 'Authorization': 'Bearer ' + token }
     })
     .then(function(res) { return res.json(); })
@@ -3470,13 +3470,13 @@
       showToast('로그인이 필요해요.');
       return;
     }
-    fetch(API_BASE + '/api/friends/respond', {
+    fetch(API_BASE + '/api/friends', {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
         'Authorization': 'Bearer ' + token
       },
-      body: JSON.stringify({ requestId: requestId, action: action })
+      body: JSON.stringify({ action: 'respond', requestId: requestId, respondAction: action })
     })
     .then(function(res) { return res.json(); })
     .then(function(data) {
@@ -3501,7 +3501,7 @@
       if (container) container.innerHTML = '<div class="empty-state">로그인이 필요해요.</div>';
       return;
     }
-    fetch(API_BASE + '/api/chat/list', {
+    fetch(API_BASE + '/api/chat', {
       headers: { 'Authorization': 'Bearer ' + token }
     })
     .then(function(res) { return res.json(); })
@@ -3560,7 +3560,7 @@
   function loadChatMessages(friendId) {
     var token = getAuthToken();
     if (!token) return;
-    fetch(API_BASE + '/api/chat/messages?friendId=' + friendId, {
+    fetch(API_BASE + '/api/chat?action=messages&friendId=' + friendId, {
       headers: { 'Authorization': 'Bearer ' + token }
     })
     .then(function(res) { return res.json(); })
@@ -3615,7 +3615,7 @@
       showToast('로그인이 필요해요.');
       return;
     }
-    fetch(API_BASE + '/api/chat/send', {
+    fetch(API_BASE + '/api/chat', {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
@@ -3647,7 +3647,7 @@
       if (container) container.innerHTML = '<div class="empty-state">로그인이 필요해요.</div>';
       return;
     }
-    fetch(API_BASE + '/api/party/me', {
+    fetch(API_BASE + '/api/party', {
       headers: { 'Authorization': 'Bearer ' + token }
     })
     .then(function(res) { return res.json(); })
@@ -3725,12 +3725,13 @@
       showToast('로그인이 필요해요.');
       return;
     }
-    fetch(API_BASE + '/api/party/create', {
+    fetch(API_BASE + '/api/party', {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
         'Authorization': 'Bearer ' + token
-      }
+      },
+      body: JSON.stringify({ action: 'create' })
     })
     .then(function(res) { return res.json(); })
     .then(function(data) {
@@ -3754,12 +3755,13 @@
       showToast('로그인이 필요해요.');
       return;
     }
-    fetch(API_BASE + '/api/party/leave', {
+    fetch(API_BASE + '/api/party', {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
         'Authorization': 'Bearer ' + token
-      }
+      },
+      body: JSON.stringify({ action: 'leave' })
     })
     .then(function(res) { return res.json(); })
     .then(function(data) {
