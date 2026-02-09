@@ -10,7 +10,8 @@
     "cap:android": "npm run cap:sync && npx cap open android",
     "cap:ios": "npm run cap:sync && npx cap open ios",
     "build:android": "npm run prepare-android && npx cap sync android && cd android && ./gradlew assembleRelease",
-    "build:android:bundle": "npm run prepare-android && npx cap sync android && cd android && ./gradlew bundleRelease"
+    "build:android:bundle": "npm run prepare-android && npx cap sync android && cd android && ./gradlew bundleRelease",
+    "build:android:debug": "npm run prepare-android && npx cap sync android && cd android && ./gradlew clean assembleDebug"
   },
   "capacitor": {
     "appId": "com.walkstory.app",

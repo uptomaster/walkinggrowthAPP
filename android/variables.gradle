@@ -1,6 +1,6 @@
 ext {
     minSdkVersion = 24
-    compileSdkVersion = 36
+    compileSdkVersion = 36  // Capacitor 8.x가 VANILLA_ICE_CREAM (SDK 36)을 요구함
     targetSdkVersion = 36
     androidxActivityVersion = '1.8.2'
     androidxAppCompatVersion = '1.7.1'

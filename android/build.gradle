@@ -27,6 +27,12 @@ allprojects {
         exclude group: 'org.jetbrains.kotlin', module: 'kotlin-stdlib-jdk7'
         exclude group: 'org.jetbrains.kotlin', module: 'kotlin-stdlib-jdk8'
     }
+    
+    // Java 버전 설정 (Capacitor 8.x는 Java 21 요구)
+    tasks.withType(JavaCompile) {
+        sourceCompatibility = JavaVersion.VERSION_21
+        targetCompatibility = JavaVersion.VERSION_21
+    }
 }
 
 task clean(type: Delete) {

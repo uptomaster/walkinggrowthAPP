@@ -2041,7 +2041,141 @@
   function doSocialLogin(provider) {
     // 카카오/구글 OAuth는 프론트엔드에서 처리하고, 백엔드에 사용자 정보 전송
     if (provider === 'kakao') {
-      // 카카오 로그인 (Kakao SDK 필요) - 모바일 앱과 웹 모두에서 사용
+      // 모바일 앱에서는 서버 사이드 OAuth 사용
+      if (isMobileApp) {
+        console.log('모바일 앱에서 카카오 로그인 - 서버 사이드 OAuth 사용');
+        showAuthLoading();
+        
+        // 서버에서 카카오 OAuth URL 가져오기
+        fetch(API_BASE + '/api/auth/kakao-oauth/start', {
+          method: 'GET',
+          headers: { 'Content-Type': 'application/json' },
+        })
+        .then(function(r) {
+          if (!r.ok) {
+            throw new Error('OAuth 시작 실패');
+          }
+          return r.json();
+        })
+        .then(function(data) {
+          if (!data.authUrl) {
+            throw new Error('OAuth URL을 받을 수 없어요');
+          }
+          
+          console.log('카카오 OAuth URL:', data.authUrl);
+          
+          // 카카오톡 앱 또는 브라우저로 열기
+          console.log('Opening Kakao OAuth URL:', data.authUrl);
+          
+          // 안드로이드 Intent로 브라우저 열기
+          if (window.Capacitor && window.Capacitor.Plugins && window.Capacitor.Plugins.App) {
+            // Capacitor App 플러그인으로 브라우저 열기
+            window.Capacitor.Plugins.App.openUrl({ url: data.authUrl }).then(function() {
+              console.log('Browser opened for Kakao OAuth');
+            }).catch(function(err) {
+              console.error('Failed to open URL with App plugin:', err);
+              // 폴백: window.open
+              window.open(data.authUrl, '_system');
+            });
+          } else {
+            // window.open 사용 (안드로이드에서는 _system으로 외부 브라우저 열기)
+            window.open(data.authUrl, '_system');
+          }
+          
+          // URL 스킴으로 돌아올 때 처리
+          // 앱이 다시 활성화될 때 URL 확인
+          var handleAppResume = function() {
+            console.log('App resumed, checking for OAuth callback');
+            // 잠시 후 URL 확인 (앱이 완전히 로드된 후)
+            setTimeout(function() {
+              if (window.location && window.location.href) {
+                var href = window.location.href;
+                console.log('Current URL:', href);
+                if (href.includes('walkstory://oauth') || href.includes('oauth')) {
+                  var url;
+                  try {
+                    url = new URL(href);
+                  } catch (e) {
+                    // URL 파싱 실패 시 수동 파싱
+                    var match = href.match(/[?&]token=([^&]+)/);
+                    var token = match ? decodeURIComponent(match[1]) : null;
+                    var errorMatch = href.match(/[?&]error=([^&]+)/);
+                    var error = errorMatch ? decodeURIComponent(errorMatch[1]) : null;
+                    
+                    if (error) {
+                      hideAuthLoading();
+                      showToast('카카오 로그인에 실패했어요: ' + error);
+                      return;
+                    }
+                    
+                    if (token) {
+                      setAuthToken(token);
+                      var userIdMatch = href.match(/[?&]userId=([^&]+)/);
+                      var nicknameMatch = href.match(/[?&]nickname=([^&]+)/);
+                      var userId = userIdMatch ? parseInt(userIdMatch[1]) : null;
+                      var nickname = nicknameMatch ? decodeURIComponent(nicknameMatch[1]) : '사용자';
+                      
+                      userProfile = { id: userId, nickname: nickname };
+                      isLoggedIn = true;
+                      hideAuthLoading();
+                      closeAuthModal();
+                      renderAuthGate();
+                      loadGameState();
+                      showToast('카카오 로그인 성공!');
+                    }
+                    return;
+                  }
+                  
+                  var token = url.searchParams.get('token');
+                  var error = url.searchParams.get('error');
+                  
+                  if (error) {
+                    hideAuthLoading();
+                    showToast('카카오 로그인에 실패했어요: ' + error);
+                    return;
+                  }
+                  
+                  if (token) {
+                    setAuthToken(token);
+                    var userId = url.searchParams.get('userId');
+                    var nickname = url.searchParams.get('nickname');
+                    userProfile = { id: parseInt(userId), nickname: decodeURIComponent(nickname) };
+                    isLoggedIn = true;
+                    hideAuthLoading();
+                    closeAuthModal();
+                    renderAuthGate();
+                    loadGameState();
+                    showToast('카카오 로그인 성공!');
+                  }
+                }
+              }
+            }, 1000);
+          };
+          
+          // 앱 포커스 이벤트 리스너
+          window.addEventListener('focus', handleAppResume);
+          document.addEventListener('visibilitychange', function() {
+            if (!document.hidden) {
+              handleAppResume();
+            }
+          });
+          
+          // 5분 후 타임아웃
+          setTimeout(function() {
+            window.removeEventListener('focus', handleAppResume);
+            hideAuthLoading();
+          }, 300000);
+        })
+        .catch(function(err) {
+          console.error('Kakao OAuth start error:', err);
+          hideAuthLoading();
+          showToast('카카오 로그인 시작에 실패했어요.');
+        });
+        
+        return;
+      }
+      
+      // 웹 브라우저에서는 JavaScript SDK 사용
       if (typeof Kakao === 'undefined') {
         showToast('카카오 SDK가 로드되지 않았어요. 잠시 후 다시 시도해 주세요.');
         console.error('Kakao SDK is not loaded');
@@ -4223,6 +4357,92 @@
     document.addEventListener('DOMContentLoaded', init);
   } else {
     init();
+  }
+  
+  // OAuth 콜백 처리 함수 (MainActivity에서 호출됨)
+  window.handleOAuthCallback = function(url) {
+    console.log('handleOAuthCallback called with URL:', url);
+    
+    if (!url || (!url.includes('walkstory://oauth') && !url.includes('oauth'))) {
+      return;
+    }
+    
+    setTimeout(function() {
+      var parsedUrl;
+      try {
+        parsedUrl = new URL(url);
+      } catch (e) {
+        // URL 파싱 실패 시 수동 파싱
+        var match = url.match(/[?&]token=([^&]+)/);
+        var token = match ? decodeURIComponent(match[1]) : null;
+        var errorMatch = url.match(/[?&]error=([^&]+)/);
+        var error = errorMatch ? decodeURIComponent(errorMatch[1]) : null;
+        
+        if (error) {
+          hideAuthLoading();
+          showToast('카카오 로그인에 실패했어요: ' + error);
+          return;
+        }
+        
+        if (token) {
+          setAuthToken(token);
+          var userIdMatch = url.match(/[?&]userId=([^&]+)/);
+          var nicknameMatch = url.match(/[?&]nickname=([^&]+)/);
+          var userId = userIdMatch ? parseInt(userIdMatch[1]) : null;
+          var nickname = nicknameMatch ? decodeURIComponent(nicknameMatch[1]) : '사용자';
+          
+          userProfile = { id: userId, nickname: nickname };
+          isLoggedIn = true;
+          hideAuthLoading();
+          closeAuthModal();
+          renderAuthGate();
+          loadGameState();
+          showToast('카카오 로그인 성공!');
+        }
+        return;
+      }
+      
+      var token = parsedUrl.searchParams.get('token');
+      var error = parsedUrl.searchParams.get('error');
+      
+      if (error) {
+        hideAuthLoading();
+        showToast('카카오 로그인에 실패했어요: ' + error);
+        return;
+      }
+      
+      if (token) {
+        setAuthToken(token);
+        var userId = parsedUrl.searchParams.get('userId');
+        var nickname = parsedUrl.searchParams.get('nickname');
+        userProfile = { id: parseInt(userId), nickname: decodeURIComponent(nickname) };
+        isLoggedIn = true;
+        hideAuthLoading();
+        closeAuthModal();
+        renderAuthGate();
+        loadGameState();
+        showToast('카카오 로그인 성공!');
+      }
+    }, 300);
+  };
+  
+  // 모바일 앱에서 URL 스킴으로 돌아왔을 때 처리 (앱 시작 시)
+  if (isMobileApp && window.location && window.location.href) {
+    var href = window.location.href;
+    if (href.includes('walkstory://oauth') || href.includes('oauth')) {
+      console.log('OAuth callback detected on app start:', href);
+      window.handleOAuthCallback(href);
+    }
+  }
+  
+  // Capacitor App 플러그인으로 URL 리스너 설정
+  if (window.Capacitor && window.Capacitor.Plugins && window.Capacitor.Plugins.App) {
+    window.Capacitor.Plugins.App.addListener('appUrlOpen', function(data) {
+      console.log('App opened with URL:', data.url);
+      if (data.url && (data.url.includes('walkstory://oauth') || data.url.includes('oauth'))) {
+        window.handleOAuthCallback(data.url);
+      }
+    });
   }
 })();
 
